@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import DeleteConfirm from '../components/DeleteConfirm.jsx';
+import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
 
 const PALETTE = ['#6d71f0', '#8a8ef5', '#c4c6ff', '#30d173', '#ffb84d', '#ff8078', '#a5a1b3', '#ff453a'];
 
@@ -7,6 +9,7 @@ export default function Tags() {
   const [tags, setTags] = useState([]);
   const [show, setShow] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [form, setForm] = useState({ name: '', color: PALETTE[0] });
 
   async function load() {
@@ -29,10 +32,15 @@ export default function Tags() {
     } catch (e) { alert(e.message); }
   }
 
-  async function del(id) {
-    if (!confirm('Remover tag? Ela será removida de todos os registros.')) return;
+  async function delNow(id) {
     await api.del(`/tags/${id}`);
+    setPendingDelete(null);
     load();
+  }
+
+  function del(id) {
+    if (canSkipDeleteConfirm()) delNow(id);
+    else setPendingDelete({ id, message: 'Remover tag? Ela será removida de todos os registros.' });
   }
 
   return (
@@ -91,6 +99,13 @@ export default function Tags() {
             </div>
           </div>
         </div>
+      )}
+      {pendingDelete && (
+        <DeleteConfirm
+          message={pendingDelete.message}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => delNow(pendingDelete.id)}
+        />
       )}
     </div>
   );

@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { fmtBR } from '../utils/dates.js';
+import DeleteConfirm from '../components/DeleteConfirm.jsx';
+import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
 
 export default function Users({ user }) {
   const [users, setUsers] = useState([]);
   const [show, setShow] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [form, setForm] = useState({ name: '', code: '', password: '', role: 'admin' });
 
   async function load() {
@@ -28,10 +31,14 @@ export default function Users({ user }) {
     } catch (e) { alert(e.message); }
   }
 
-  async function del(id) {
-    if (!confirm('Remover usuário?')) return;
-    try { await api.del(`/users/${id}`); load(); }
+  async function delNow(id) {
+    try { await api.del(`/users/${id}`); setPendingDelete(null); load(); }
     catch (e) { alert(e.message); }
+  }
+
+  function del(id) {
+    if (canSkipDeleteConfirm()) delNow(id);
+    else setPendingDelete({ id, message: 'Remover usuário?' });
   }
 
   return (
@@ -105,6 +112,13 @@ export default function Users({ user }) {
             </div>
           </div>
         </div>
+      )}
+      {pendingDelete && (
+        <DeleteConfirm
+          message={pendingDelete.message}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => delNow(pendingDelete.id)}
+        />
       )}
     </div>
   );

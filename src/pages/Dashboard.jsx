@@ -5,6 +5,8 @@ import DateRangePicker from '../components/DateRangePicker.jsx';
 import WidgetCard from '../components/WidgetCard.jsx';
 import WidgetEditor from '../components/WidgetEditor.jsx';
 import { TagFilter } from '../components/TagSelector.jsx';
+import DeleteConfirm from '../components/DeleteConfirm.jsx';
+import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
 
 export default function Dashboard() {
   const [range, setRange] = useState({ ...ranges['7d'](), preset: '7d' });
@@ -15,6 +17,7 @@ export default function Dashboard() {
   const [landing, setLanding] = useState([]);
   const [editing, setEditing] = useState(null);
   const [showNew, setShowNew] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const dashRef = useRef(null);
 
   async function loadData() {
@@ -45,10 +48,15 @@ export default function Dashboard() {
     loadData();
   }
 
-  async function deleteWidget(id) {
-    if (!confirm('Remover widget?')) return;
+  async function deleteWidgetNow(id) {
     await api.del(`/widgets/${id}`);
+    setPendingDelete(null);
     loadData();
+  }
+
+  function deleteWidget(id) {
+    if (canSkipDeleteConfirm()) deleteWidgetNow(id);
+    else setPendingDelete({ id, message: 'Remover widget?' });
   }
 
   async function exportPDF() {
@@ -115,6 +123,13 @@ export default function Dashboard() {
           initial={editing}
           onSave={saveWidget}
           onClose={() => { setEditing(null); setShowNew(false); }}
+        />
+      )}
+      {pendingDelete && (
+        <DeleteConfirm
+          message={pendingDelete.message}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => deleteWidgetNow(pendingDelete.id)}
         />
       )}
     </div>

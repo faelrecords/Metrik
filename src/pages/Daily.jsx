@@ -4,6 +4,8 @@ import { today, ranges, fmtBR } from '../utils/dates.js';
 import DateRangePicker from '../components/DateRangePicker.jsx';
 import TagSelector, { TagFilter, TagChip } from '../components/TagSelector.jsx';
 import { ensureTagIds, firstSheetRows, num, parseDate, readWorkbook, splitTags, writeTemplate } from '../utils/spreadsheet.js';
+import DeleteConfirm from '../components/DeleteConfirm.jsx';
+import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
 
 const EMPTY = { date: today(), leads: '', cpl: '', total_spent: '', visits: '', conversion_rate: '', tags: [], notes: '' };
 
@@ -15,6 +17,7 @@ export default function Daily() {
   const [editing, setEditing] = useState(null);
   const [show, setShow] = useState(false);
   const [form, setForm] = useState(EMPTY);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const importRef = useRef(null);
 
   async function load() {
@@ -50,10 +53,15 @@ export default function Daily() {
     } catch (e) { alert(e.message); }
   }
 
-  async function del(id) {
-    if (!confirm('Remover registro?')) return;
+  async function delNow(id) {
     await api.del(`/daily/${id}`);
+    setPendingDelete(null);
     load();
+  }
+
+  function del(id) {
+    if (canSkipDeleteConfirm()) delNow(id);
+    else setPendingDelete({ id, message: 'Remover registro?' });
   }
 
   async function exportXLS() {
@@ -270,6 +278,13 @@ export default function Daily() {
             </div>
           </div>
         </div>
+      )}
+      {pendingDelete && (
+        <DeleteConfirm
+          message={pendingDelete.message}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => delNow(pendingDelete.id)}
+        />
       )}
     </div>
   );

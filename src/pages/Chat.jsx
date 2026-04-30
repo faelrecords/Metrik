@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../api.js';
+import DeleteConfirm from '../components/DeleteConfirm.jsx';
+import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
 
 export default function Chat() {
   const [sessions, setSessions] = useState([]);
@@ -9,6 +11,7 @@ export default function Chat() {
   const [keyId, setKeyId] = useState(null);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const msgRef = useRef(null);
 
   async function loadSessions() {
@@ -38,11 +41,16 @@ export default function Chat() {
     setMessages([]);
   }
 
-  async function delSession(s) {
-    if (!confirm('Apagar conversa?')) return;
+  async function delSessionNow(s) {
     await api.del(`/chat/sessions/${s.id}`);
+    setPendingDelete(null);
     if (active?.id === s.id) { setActive(null); setMessages([]); }
     loadSessions();
+  }
+
+  function delSession(s) {
+    if (canSkipDeleteConfirm()) delSessionNow(s);
+    else setPendingDelete({ item: s, message: 'Apagar conversa?' });
   }
 
   async function send() {
@@ -123,6 +131,13 @@ export default function Chat() {
           </div>
         </div>
       </div>
+      {pendingDelete && (
+        <DeleteConfirm
+          message={pendingDelete.message}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => delSessionNow(pendingDelete.item)}
+        />
+      )}
     </div>
   );
 }

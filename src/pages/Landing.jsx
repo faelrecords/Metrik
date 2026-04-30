@@ -3,6 +3,8 @@ import { api } from '../api.js';
 import { today, addDays, fmtBR } from '../utils/dates.js';
 import TagSelector, { TagFilter, TagChip } from '../components/TagSelector.jsx';
 import { ensureTagIds, firstSheetRows, num, parseDate, readWorkbook, splitTags, writeTemplate } from '../utils/spreadsheet.js';
+import DeleteConfirm from '../components/DeleteConfirm.jsx';
+import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
 
 export default function Landing() {
   const [pages, setPages] = useState([]);
@@ -13,6 +15,7 @@ export default function Landing() {
   const [entry, setEntry] = useState(null);
   const [form, setForm] = useState({ title: '', url: '', tags: [] });
   const [entryForm, setEntryForm] = useState({ period_start: addDays(today(), -6), period_end: today(), visits: '', leads: '' });
+  const [pendingDelete, setPendingDelete] = useState(null);
   const importRef = useRef(null);
 
   async function load() {
@@ -37,10 +40,15 @@ export default function Landing() {
     } catch (e) { alert(e.message); }
   }
 
-  async function del(id) {
-    if (!confirm('Remover landing page e todos os registros?')) return;
+  async function delNow(id) {
     await api.del(`/landing/${id}`);
+    setPendingDelete(null);
     load();
+  }
+
+  function del(id) {
+    if (canSkipDeleteConfirm()) delNow(id);
+    else setPendingDelete({ type: 'page', id, message: 'Remover landing page e todos os registros?' });
   }
 
   function openEntry(p) {
@@ -56,10 +64,15 @@ export default function Landing() {
     } catch (e) { alert(e.message); }
   }
 
-  async function delEntry(pid, eid) {
-    if (!confirm('Remover registro?')) return;
+  async function delEntryNow(pid, eid) {
     await api.del(`/landing/${pid}/entries/${eid}`);
+    setPendingDelete(null);
     load();
+  }
+
+  function delEntry(pid, eid) {
+    if (canSkipDeleteConfirm()) delEntryNow(pid, eid);
+    else setPendingDelete({ type: 'entry', pid, eid, message: 'Remover registro?' });
   }
 
   const filtered = tagFilter ? pages.filter(p => (p.tags || []).includes(tagFilter)) : pages;
@@ -303,6 +316,15 @@ export default function Landing() {
             </div>
           </div>
         </div>
+      )}
+      {pendingDelete && (
+        <DeleteConfirm
+          message={pendingDelete.message}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => pendingDelete.type === 'entry'
+            ? delEntryNow(pendingDelete.pid, pendingDelete.eid)
+            : delNow(pendingDelete.id)}
+        />
       )}
     </div>
   );

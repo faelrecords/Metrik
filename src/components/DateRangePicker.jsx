@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ranges } from '../utils/dates.js';
 
 const PRESET = [
+  { key: 'all', label: 'Todos' },
   { key: '7d', label: '7 dias' },
   { key: '14d', label: '14 dias' },
   { key: '30d', label: '30 dias' },

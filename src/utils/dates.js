@@ -31,6 +31,7 @@ export function fmtBRShort(date) {
 }
 
 export const ranges = {
+  'all': () => ({ from: '', to: '', label: 'Todos' }),
   '7d': () => ({ from: addDays(today(), -6), to: today(), label: 'Últimos 7 dias' }),
   '14d': () => ({ from: addDays(today(), -13), to: today(), label: 'Últimos 14 dias' }),
   '30d': () => ({ from: addDays(today(), -29), to: today(), label: 'Últimos 30 dias' }),

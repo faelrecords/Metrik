@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import DeleteConfirm from '../components/DeleteConfirm.jsx';
+import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
 
 const PROVIDERS = [
   { v: 'openai', label: 'OpenAI', placeholder: 'sk-...', defaultModel: 'gpt-4o-mini', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'] },
@@ -10,6 +12,7 @@ const PROVIDERS = [
 export default function LLMKeys() {
   const [keys, setKeys] = useState([]);
   const [show, setShow] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [form, setForm] = useState({ provider: 'openai', label: '', model: PROVIDERS[0].defaultModel, api_key: '' });
 
   async function load() {
@@ -31,10 +34,15 @@ export default function LLMKeys() {
     } catch (e) { alert(e.message); }
   }
 
-  async function del(id) {
-    if (!confirm('Remover chave?')) return;
+  async function delNow(id) {
     await api.del(`/llm/keys/${id}`);
+    setPendingDelete(null);
     load();
+  }
+
+  function del(id) {
+    if (canSkipDeleteConfirm()) delNow(id);
+    else setPendingDelete({ id, message: 'Remover chave?' });
   }
 
   const provider = PROVIDERS.find(p => p.v === form.provider);
@@ -106,6 +114,13 @@ export default function LLMKeys() {
             </div>
           </div>
         </div>
+      )}
+      {pendingDelete && (
+        <DeleteConfirm
+          message={pendingDelete.message}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => delNow(pendingDelete.id)}
+        />
       )}
     </div>
   );
