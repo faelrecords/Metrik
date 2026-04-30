@@ -67,9 +67,24 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
       }
       return arr;
     }
-    if (widget.source === 'landing') return dataLanding;
+    if (widget.source === 'landing') {
+      const landingRows = widget.landing_id
+        ? dataLanding.filter(p => Number(p.id) === Number(widget.landing_id))
+        : dataLanding;
+      return landingRows.map(p => {
+        const entries = Array.isArray(p.entries) ? p.entries : [];
+        const totalVisits = entries.reduce((s, e) => s + (Number(e.visits) || 0), 0);
+        const totalLeads = entries.reduce((s, e) => s + (Number(e.leads) || 0), 0);
+        return {
+          ...p,
+          totalVisits,
+          totalLeads,
+          conversion: totalVisits > 0 ? (totalLeads / totalVisits) * 100 : 0
+        };
+      });
+    }
     return [];
-  }, [widget.source, dataDaily, dataLeads, dataLanding]);
+  }, [widget.source, widget.landing_id, dataDaily, dataLeads, dataLanding]);
   const actions = (
     <div className="widget-actions">
       <button
@@ -117,7 +132,7 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
   } else if (widget.source === 'landing') {
     chartData = filtered.map(p => ({
       name: p.title,
-      value: widget.field === 'conversion' ? p.conversion : (widget.field === 'leads' ? p.totalLeads : p.totalVisits)
+      value: widget.field === 'conversion' ? p.conversion : (widget.field === 'totalLeads' ? p.totalLeads : p.totalVisits)
     }));
   }
 

@@ -177,6 +177,7 @@ export default function Dashboard({ user }) {
           initial={editing}
           onSave={saveWidget}
           onClose={() => { setEditing(null); setShowNew(false); }}
+          landingPages={landing}
         />
       )}
       {pendingDelete && (

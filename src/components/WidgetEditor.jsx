@@ -45,7 +45,7 @@ const SIZES = [1, 2, 3, 4, 6, 8, 12];
 
 const COLORS = ['#6d71f0', '#8a8ef5', '#c4c6ff', '#30d173', '#ffb84d', '#ff8078', '#a5a1b3'];
 
-export default function WidgetEditor({ initial, onSave, onClose }) {
+export default function WidgetEditor({ initial, onSave, onClose, landingPages = [] }) {
   const [w, setW] = useState(initial || {
     title: 'Novo widget',
     source: 'daily',
@@ -60,6 +60,7 @@ export default function WidgetEditor({ initial, onSave, onClose }) {
     const next = { ...w, [k]: v };
     if (k === 'source') {
       next.field = FIELDS[v][0].v;
+      next.landing_id = '';
     }
     setW(next);
   }
@@ -75,6 +76,15 @@ export default function WidgetEditor({ initial, onSave, onClose }) {
           <label className="label">Título</label>
           <input className="input" value={w.title} onChange={e => set('title', e.target.value)} />
         </div>
+        {w.source === 'landing' && (
+          <div className="field">
+            <label className="label">Landing page</label>
+            <select className="select" value={w.landing_id || ''} onChange={e => set('landing_id', e.target.value ? Number(e.target.value) : '')}>
+              <option value="">Todas as landing pages</option>
+              {landingPages.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+            </select>
+          </div>
+        )}
         <div className="grid-2">
           <div className="field">
             <label className="label">Fonte de dados</label>
