@@ -1,8 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL || (
-  window.location.hostname.endsWith('github.io')
-    ? 'https://mvptsjsankxtaccppizm.supabase.co/functions/v1/api'
-    : '/api'
-);
+const BASE = import.meta.env.VITE_API_URL || 'https://mvptsjsankxtaccppizm.supabase.co/functions/v1/api';
 
 function token() {
   return localStorage.getItem('metrik_token') || '';
