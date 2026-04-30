@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { today, addDays, fmtBR } from '../utils/dates.js';
+import { ranges } from '../utils/dates.js';
+import DateRangePicker from '../components/DateRangePicker.jsx';
 import TagSelector, { TagFilter, TagChip } from '../components/TagSelector.jsx';
 import { ensureTagIds, firstSheetRows, num, parseDate, readWorkbook, splitTags, writeTemplate } from '../utils/spreadsheet.js';
 import DeleteConfirm from '../components/DeleteConfirm.jsx';
@@ -11,6 +13,7 @@ export default function Landing() {
   const [pages, setPages] = useState([]);
   const [tags, setTags] = useState([]);
   const [tagFilter, setTagFilter] = useState(null);
+  const [range, setRange] = useState({ ...ranges['all'](), preset: 'all' });
   const [showNew, setShowNew] = useState(false);
   const [editing, setEditing] = useState(null);
   const [entry, setEntry] = useState(null);
@@ -79,11 +82,20 @@ export default function Landing() {
     else setPendingDelete({ type: 'entry', pid, eid, message: 'Remover registro?' });
   }
 
-  const filtered = tagFilter ? pages.filter(p => (p.tags || []).includes(tagFilter)) : pages;
+  const filtered = (tagFilter ? pages.filter(p => (p.tags || []).includes(tagFilter)) : pages).map(p => {
+    const entries = (p.entries || []).filter(e => {
+      if (range.from && e.period_end < range.from) return false;
+      if (range.to && e.period_start > range.to) return false;
+      return true;
+    });
+    const totalVisits = entries.reduce((s, e) => s + Number(e.visits || 0), 0);
+    const totalLeads = entries.reduce((s, e) => s + Number(e.leads || 0), 0);
+    return { ...p, entries, totalVisits, totalLeads, conversion: totalVisits > 0 ? (totalLeads / totalVisits) * 100 : 0 };
+  });
   const pageSize = 31;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageItems = filtered.slice((page - 1) * pageSize, page * pageSize);
-  useEffect(() => { setPage(1); }, [tagFilter]);
+  useEffect(() => { setPage(1); }, [tagFilter, range.from, range.to]);
 
   function toggleSelected(id) {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -201,6 +213,9 @@ export default function Landing() {
         </div>
       </div>
 
+      <div className="dash-toolbar">
+        <DateRangePicker value={range} onChange={setRange} />
+      </div>
       <div className="dash-toolbar">
         <TagFilter value={tagFilter} onChange={setTagFilter} />
       </div>
