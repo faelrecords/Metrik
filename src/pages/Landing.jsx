@@ -24,6 +24,7 @@ export default function Landing({ readOnly = false }) {
   const [bulkTags, setBulkTags] = useState([]);
   const [activePageId, setActivePageId] = useState(null);
   const [page, setPage] = useState(1);
+  const [groupModal, setGroupModal] = useState(null);
   const [groups, setGroups] = useState(() => {
     try { return JSON.parse(localStorage.getItem('metrik_landing_groups') || '["Geral"]'); }
     catch { return ['Geral']; }
@@ -117,21 +118,29 @@ export default function Landing({ readOnly = false }) {
   }
 
   async function createGroup() {
-    const name = prompt('Nome do grupo?');
-    if (!name) return;
-    const next = [...new Set([...groups, name.trim()].filter(Boolean))];
-    saveGroups(next);
-    pickGroup(name.trim());
+    setGroupModal({ mode: 'create', name: '' });
   }
 
   async function setPageGroup(page) {
-    const group = prompt('Grupo da landing?', page.group || 'Geral');
-    if (!group) return;
-    const name = group.trim();
-    if (!groups.includes(name)) saveGroups([...groups, name]);
-    await api.put(`/landing/${page.id}`, { title: page.title, url: page.url, tags: page.tags || [], group: name });
-    await load();
+    setGroupModal({ mode: 'assign', page, selected: page.group || 'Geral', name: '' });
+  }
+
+  async function createGroupFromModal() {
+    const name = groupModal?.name?.trim();
+    if (!name) return;
+    const next = [...new Set([...groups, name])];
+    saveGroups(next);
+    setGroupModal(null);
     pickGroup(name);
+  }
+
+  async function assignGroupFromModal(group) {
+    const page = groupModal?.page;
+    if (!page || !group) return;
+    await api.put(`/landing/${page.id}`, { title: page.title, url: page.url, tags: page.tags || [], group });
+    await load();
+    setGroupModal(null);
+    pickGroup(group);
   }
 
   function toggleSelected(id) {
@@ -423,6 +432,57 @@ export default function Landing({ readOnly = false }) {
               <button className="btn ghost" onClick={() => setEntry(null)}>Cancelar</button>
               <button className="btn accent" onClick={saveEntry}>Salvar</button>
             </div>
+          </div>
+        </div>
+      )}
+      {groupModal && (
+        <div className="modal-backdrop" onClick={() => setGroupModal(null)}>
+          <div className="modal small" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{groupModal.mode === 'create' ? 'Novo grupo' : 'Escolher grupo'}</h2>
+              <button className="modal-close" onClick={() => setGroupModal(null)}>×</button>
+            </div>
+            {groupModal.mode === 'assign' ? (
+              <>
+                <div className="dash-toolbar" style={{ marginTop: 0 }}>
+                  {groups.map(g => (
+                    <button
+                      key={g}
+                      className={`range-pill ${groupModal.selected === g ? 'active' : ''}`}
+                      onClick={() => setGroupModal({ ...groupModal, selected: g })}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+                <div className="modal-actions">
+                  <button className="btn ghost" onClick={() => setGroupModal({ mode: 'create', name: '', assignPage: groupModal.page })}>Novo grupo</button>
+                  <button className="btn accent" onClick={() => assignGroupFromModal(groupModal.selected)}>Salvar</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="field">
+                  <label className="label">Nome</label>
+                  <input className="input" autoFocus value={groupModal.name} onChange={e => setGroupModal({ ...groupModal, name: e.target.value })} />
+                </div>
+                <div className="modal-actions">
+                  <button className="btn ghost" onClick={() => setGroupModal(null)}>Cancelar</button>
+                  <button className="btn accent" onClick={async () => {
+                    const name = groupModal.name.trim();
+                    if (!name) return;
+                    const next = [...new Set([...groups, name])];
+                    saveGroups(next);
+                    if (groupModal.assignPage) {
+                      setGroupModal({ mode: 'assign', page: groupModal.assignPage, selected: name, name: '' });
+                    } else {
+                      setGroupModal(null);
+                      pickGroup(name);
+                    }
+                  }}>Criar</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
