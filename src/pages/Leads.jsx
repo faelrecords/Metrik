@@ -10,7 +10,7 @@ import Pagination from '../components/Pagination.jsx';
 
 const newCampaign = () => ({ name: '', leads: '', cpl: '' });
 
-export default function Leads() {
+export default function Leads({ readOnly = false }) {
   const [range, setRange] = useState({ ...ranges['30d'](), preset: '30d' });
   const [tagFilter, setTagFilter] = useState(null);
   const [rows, setRows] = useState([]);
@@ -205,11 +205,11 @@ export default function Leads() {
           <div className="subtitle">Relatórios por período com leads e CPL por campanha</div>
         </div>
         <div className="row-flex">
-          <button className="btn" onClick={exportTemplate}>Template</button>
-          <button className="btn" onClick={() => importRef.current?.click()}>Importar</button>
-          <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => importXLS(e.target.files?.[0])} />
+          {!readOnly && <button className="btn" onClick={exportTemplate}>Template</button>}
+          {!readOnly && <button className="btn" onClick={() => importRef.current?.click()}>Importar</button>}
+          {!readOnly && <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => importXLS(e.target.files?.[0])} />}
           <button className="btn" onClick={exportXLS}>↓ Excel</button>
-          <button className="btn accent" onClick={() => open(null)}>+ Adicionar relatório</button>
+          {!readOnly && <button className="btn accent" onClick={() => open(null)}>+ Adicionar relatório</button>}
         </div>
       </div>
 
@@ -219,7 +219,7 @@ export default function Leads() {
       <div className="dash-toolbar">
         <TagFilter value={tagFilter} onChange={setTagFilter} />
       </div>
-      {rows.length > 0 && (
+      {!readOnly && rows.length > 0 && (
         <div className="dash-toolbar">
           <label className="tag-chip">
             <input type="checkbox" checked={pageRows.length > 0 && pageRows.every(r => selected.includes(r.id))} onChange={e => setSelected(e.target.checked ? [...new Set([...selected, ...pageRows.map(r => r.id)])] : selected.filter(id => !pageRows.some(r => r.id === id)))} />
@@ -227,7 +227,7 @@ export default function Leads() {
           </label>
         </div>
       )}
-      {selected.length > 0 && (
+      {!readOnly && selected.length > 0 && (
         <div className="glass-sm bulk-bar">
           <strong>{selected.length} selecionados</strong>
           <TagSelector value={bulkTags} onChange={setBulkTags} />
@@ -240,7 +240,7 @@ export default function Leads() {
         <div className="glass">
           <div className="empty-state">
             <h3>Nenhum relatório no período</h3>
-            <p>Clique em "+ Adicionar relatório" para começar.</p>
+            {!readOnly && <p>Clique em "+ Adicionar relatório" para começar.</p>}
           </div>
         </div>
       ) : (
@@ -252,7 +252,7 @@ export default function Leads() {
                 <div className="row-flex mb-2" style={{ justifyContent: 'space-between' }}>
                   <div>
                     <div className="row-flex">
-                      <input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggleSelected(r.id)} />
+                      {!readOnly && <input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggleSelected(r.id)} />}
                       <h3 style={{ marginBottom: 4 }}>{fmtBR(r.period_start)} → {fmtBR(r.period_end)}</h3>
                     </div>
                     <div className="row-flex">
@@ -272,8 +272,8 @@ export default function Leads() {
                     <div className="text-tertiary">
                       CPL médio: <strong className="text-primary">R$ {t.avgCpl.toFixed(2)}</strong>
                     </div>
-                    <button className="btn sm ghost" onClick={() => open(r)}>Editar</button>
-                    <button className="btn sm danger" onClick={() => del(r.id)}>×</button>
+                    {!readOnly && <button className="btn sm ghost" onClick={() => open(r)}>Editar</button>}
+                    {!readOnly && <button className="btn sm danger" onClick={() => del(r.id)}>×</button>}
                   </div>
                 </div>
                 <table className="table">

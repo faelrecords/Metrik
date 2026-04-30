@@ -61,10 +61,12 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
       <div className={`widget size-${widget.size || 3}`}>
         <div className="widget-head">
           <div className="widget-title">{widget.title}</div>
-          <div className="widget-actions">
-            <button onClick={onEdit}>✎</button>
-            <button onClick={onDelete}>×</button>
-          </div>
+          {(onEdit || onDelete) && (
+            <div className="widget-actions">
+              {onEdit && <button onClick={onEdit}>✎</button>}
+              {onDelete && <button onClick={onDelete}>×</button>}
+            </div>
+          )}
         </div>
         <div className="widget-kpi">
           <div className="value" style={{ color: widget.color }}>{fmt(value, widget.field)}</div>
@@ -97,10 +99,12 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
     <div className={`widget size-${widget.size || 6}`}>
       <div className="widget-head">
         <div className="widget-title">{widget.title}</div>
-        <div className="widget-actions">
-          <button onClick={onEdit}>✎</button>
-          <button onClick={onDelete}>×</button>
-        </div>
+        {(onEdit || onDelete) && (
+          <div className="widget-actions">
+            {onEdit && <button onClick={onEdit}>✎</button>}
+            {onDelete && <button onClick={onDelete}>×</button>}
+          </div>
+        )}
       </div>
       <div className="widget-chart">
         {chartData.length === 0 ? (

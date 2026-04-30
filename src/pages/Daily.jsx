@@ -10,7 +10,7 @@ import Pagination from '../components/Pagination.jsx';
 
 const EMPTY = { date: today(), leads: '', cpl: '', total_spent: '', visits: '', conversion_rate: '', tags: [], notes: '' };
 
-export default function Daily() {
+export default function Daily({ readOnly = false }) {
   const [range, setRange] = useState({ ...ranges['30d'](), preset: '30d' });
   const [tagFilter, setTagFilter] = useState(null);
   const [rows, setRows] = useState([]);
@@ -196,12 +196,12 @@ export default function Daily() {
           <div className="subtitle">Registro diário de leads, CPL, gasto, visitas e conversão</div>
         </div>
         <div className="row-flex">
-          <button className="btn" onClick={exportTemplate}>Template</button>
-          <button className="btn" onClick={() => importRef.current?.click()}>Importar</button>
-          <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => importXLS(e.target.files?.[0])} />
+          {!readOnly && <button className="btn" onClick={exportTemplate}>Template</button>}
+          {!readOnly && <button className="btn" onClick={() => importRef.current?.click()}>Importar</button>}
+          {!readOnly && <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => importXLS(e.target.files?.[0])} />}
           <button className="btn" onClick={exportXLS}>↓ Excel</button>
           <button className="btn" onClick={exportPDF}>↓ PDF</button>
-          <button className="btn accent" onClick={() => open(null)}>+ Registrar</button>
+          {!readOnly && <button className="btn accent" onClick={() => open(null)}>+ Registrar</button>}
         </div>
       </div>
 
@@ -211,7 +211,7 @@ export default function Daily() {
       <div className="dash-toolbar">
         <TagFilter value={tagFilter} onChange={setTagFilter} />
       </div>
-      {selected.length > 0 && (
+      {!readOnly && selected.length > 0 && (
         <div className="glass-sm bulk-bar">
           <strong>{selected.length} selecionados</strong>
           <TagSelector value={bulkTags} onChange={setBulkTags} />
@@ -224,19 +224,19 @@ export default function Daily() {
         {rows.length === 0 ? (
           <div className="empty-state">
             <h3>Sem registros no período</h3>
-            <p>Clique em "+ Registrar" para adicionar.</p>
+            {!readOnly && <p>Clique em "+ Registrar" para adicionar.</p>}
           </div>
         ) : (
           <table className="table">
             <thead>
               <tr>
-                <th><input type="checkbox" checked={pageRows.length > 0 && pageRows.every(r => selected.includes(r.id))} onChange={e => setSelected(e.target.checked ? [...new Set([...selected, ...pageRows.map(r => r.id)])] : selected.filter(id => !pageRows.some(r => r.id === id)))} /></th><th>Data</th><th>Leads</th><th>CPL</th><th>Gasto</th><th>Visitas</th><th>Conversão</th><th>Tags</th><th></th>
+                {!readOnly && <th><input type="checkbox" checked={pageRows.length > 0 && pageRows.every(r => selected.includes(r.id))} onChange={e => setSelected(e.target.checked ? [...new Set([...selected, ...pageRows.map(r => r.id)])] : selected.filter(id => !pageRows.some(r => r.id === id)))} /></th>}<th>Data</th><th>Leads</th><th>CPL</th><th>Gasto</th><th>Visitas</th><th>Conversão</th><th>Tags</th>{!readOnly && <th></th>}
               </tr>
             </thead>
             <tbody>
               {pageRows.map(r => (
                 <tr key={r.id}>
-                  <td><input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggleSelected(r.id)} /></td>
+                  {!readOnly && <td><input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggleSelected(r.id)} /></td>}
                   <td>{fmtBR(r.date)}</td>
                   <td>{r.leads}</td>
                   <td>R$ {Number(r.cpl).toFixed(2)}</td>
@@ -251,10 +251,12 @@ export default function Daily() {
                       })}
                     </div>
                   </td>
-                  <td className="actions-cell">
-                    <button className="btn sm ghost" onClick={() => open(r)}>Editar</button>
-                    <button className="btn sm danger" onClick={() => del(r.id)}>×</button>
-                  </td>
+                  {!readOnly && (
+                    <td className="actions-cell">
+                      <button className="btn sm ghost" onClick={() => open(r)}>Editar</button>
+                      <button className="btn sm danger" onClick={() => del(r.id)}>×</button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

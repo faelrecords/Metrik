@@ -9,7 +9,7 @@ import DeleteConfirm from '../components/DeleteConfirm.jsx';
 import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
 import Pagination from '../components/Pagination.jsx';
 
-export default function Landing() {
+export default function Landing({ readOnly = false }) {
   const [pages, setPages] = useState([]);
   const [tags, setTags] = useState([]);
   const [tagFilter, setTagFilter] = useState(null);
@@ -242,11 +242,11 @@ export default function Landing() {
           <div className="subtitle">Cadastro, registros de visitas/leads e taxa de conversão</div>
         </div>
         <div className="row-flex">
-          <button className="btn" onClick={exportTemplate}>Template</button>
-          <button className="btn" onClick={() => importRef.current?.click()}>Importar</button>
-          <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => importXLS(e.target.files?.[0])} />
+          {!readOnly && <button className="btn" onClick={exportTemplate}>Template</button>}
+          {!readOnly && <button className="btn" onClick={() => importRef.current?.click()}>Importar</button>}
+          {!readOnly && <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => importXLS(e.target.files?.[0])} />}
           <button className="btn" onClick={exportXLS}>↓ Excel</button>
-          <button className="btn accent" onClick={() => open(null)}>+ Nova landing</button>
+          {!readOnly && <button className="btn accent" onClick={() => open(null)}>+ Nova landing</button>}
         </div>
       </div>
 
@@ -262,14 +262,14 @@ export default function Landing() {
         {groups.map(g => (
           <button key={g} className={`range-pill ${activeGroup === g ? 'active' : ''}`} onClick={() => pickGroup(g)}>{g}</button>
         ))}
-        <button className="range-pill add" onClick={createGroup}>+ Grupo</button>
+        {!readOnly && <button className="range-pill add" onClick={createGroup}>+ Grupo</button>}
       </div>
-      {filtered.length > 0 && (
+      {!readOnly && filtered.length > 0 && (
         <div className="dash-toolbar">
           <button className="btn sm ghost" onClick={() => setSelected(pageItems.map(p => p.id))}>Selecionar visíveis</button>
         </div>
       )}
-      {selected.length > 0 && (
+      {!readOnly && selected.length > 0 && (
         <div className="glass-sm bulk-bar">
           <strong>{selected.length} selecionadas</strong>
           <TagSelector value={bulkTags} onChange={setBulkTags} />
@@ -282,7 +282,7 @@ export default function Landing() {
         <div className="glass">
           <div className="empty-state">
             <h3>Nenhuma landing cadastrada</h3>
-            <p>Adicione título e URL para começar.</p>
+            {!readOnly && <p>Adicione título e URL para começar.</p>}
           </div>
         </div>
       ) : (
@@ -301,7 +301,7 @@ export default function Landing() {
               <div className="row-flex" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="row-flex">
-                    <input type="checkbox" checked={selected.includes(activePage.id)} onChange={() => toggleSelected(activePage.id)} />
+                    {!readOnly && <input type="checkbox" checked={selected.includes(activePage.id)} onChange={() => toggleSelected(activePage.id)} />}
                     <h3 style={{ marginBottom: 4 }}>{activePage.title}</h3>
                   </div>
                   <a href={activePage.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, wordBreak: 'break-all' }}>{activePage.url}</a>
@@ -313,9 +313,9 @@ export default function Landing() {
                   </div>
                 </div>
                 <div className="row-flex">
-                  <button className="btn sm ghost" onClick={() => open(activePage)}>Editar</button>
-                  <button className="btn sm ghost" onClick={() => setPageGroup(activePage)}>Grupo</button>
-                  <button className="btn sm danger" onClick={() => del(activePage.id)}>×</button>
+                  {!readOnly && <button className="btn sm ghost" onClick={() => open(activePage)}>Editar</button>}
+                  {!readOnly && <button className="btn sm ghost" onClick={() => setPageGroup(activePage)}>Grupo</button>}
+                  {!readOnly && <button className="btn sm danger" onClick={() => del(activePage.id)}>×</button>}
                 </div>
               </div>
               <div className="grid-3 mt-2">
@@ -336,13 +336,13 @@ export default function Landing() {
               <div className="mt-2">
                 <div className="row-flex" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
                   <strong className="text-secondary" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Registros</strong>
-                  <button className="btn sm" onClick={() => openEntry(activePage)}>+ Registro</button>
+                  {!readOnly && <button className="btn sm" onClick={() => openEntry(activePage)}>+ Registro</button>}
                 </div>
                 {activePage.entries.length === 0 ? (
                   <div className="text-tertiary" style={{ fontSize: 12, padding: 8 }}>Sem registros ainda.</div>
                 ) : (
                   <table className="table">
-                    <thead><tr><th>Período</th><th>Visitas</th><th>Leads</th><th>Conv.</th><th></th></tr></thead>
+                    <thead><tr><th>Período</th><th>Visitas</th><th>Leads</th><th>Conv.</th>{!readOnly && <th></th>}</tr></thead>
                     <tbody>
                       {activePage.entries.slice().reverse().map(e => (
                         <tr key={e.id}>
@@ -350,7 +350,7 @@ export default function Landing() {
                           <td>{e.visits}</td>
                           <td>{e.leads}</td>
                           <td>{Number(e.conversion).toFixed(2)}%</td>
-                          <td className="actions-cell"><button className="btn sm danger" onClick={() => delEntry(activePage.id, e.id)}>×</button></td>
+                          {!readOnly && <td className="actions-cell"><button className="btn sm danger" onClick={() => delEntry(activePage.id, e.id)}>×</button></td>}
                         </tr>
                       ))}
                     </tbody>

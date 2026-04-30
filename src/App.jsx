@@ -16,16 +16,17 @@ const NAV = [
   { to: '/diario', label: 'Diário' },
   { to: '/leads', label: 'Leads' },
   { to: '/landing', label: 'Landing Pages' },
-  { to: '/chat', label: 'IA' },
-  { to: '/tags', label: 'Tags' },
-  { to: '/llm', label: 'LLMs' },
+  { to: '/chat', label: 'IA', writeOnly: true },
+  { to: '/tags', label: 'Tags', writeOnly: true },
+  { to: '/llm', label: 'LLMs', writeOnly: true },
   { to: '/usuarios', label: 'Usuários', adminOnly: true }
 ];
 
 function Navbar({ user, onLogout }) {
   const nav = useNavigate();
   const loc = useLocation();
-  const links = NAV.filter(n => !n.adminOnly || ['admin', 'super_admin'].includes(user.role));
+  const canWrite = ['admin', 'super_admin'].includes(user.role);
+  const links = NAV.filter(n => (!n.adminOnly || canWrite) && (!n.writeOnly || canWrite));
   return (
     <nav className="navbar">
       <div className="brand" onClick={() => nav('/')} style={{ cursor: 'pointer' }}>
@@ -52,6 +53,7 @@ function Navbar({ user, onLogout }) {
 export default function App() {
   const [user, setUser] = useState(api.getUser());
   const nav = useNavigate();
+  const readOnly = user?.role === 'user';
 
   useEffect(() => {
     if (user) {
@@ -87,9 +89,9 @@ export default function App() {
       <div className="container">
         <Routes>
           <Route path="/" element={<Dashboard user={user} />} />
-          <Route path="/diario" element={<Daily />} />
-          <Route path="/leads" element={<Leads />} />
-          <Route path="/landing" element={<Landing />} />
+          <Route path="/diario" element={<Daily readOnly={readOnly} />} />
+          <Route path="/leads" element={<Leads readOnly={readOnly} />} />
+          <Route path="/landing" element={<Landing readOnly={readOnly} />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/tags" element={<Tags />} />
           <Route path="/llm" element={<LLMKeys />} />

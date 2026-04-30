@@ -8,7 +8,8 @@ import { TagFilter } from '../components/TagSelector.jsx';
 import DeleteConfirm from '../components/DeleteConfirm.jsx';
 import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
 
-export default function Dashboard() {
+export default function Dashboard({ user }) {
+  const readOnly = user?.role === 'user';
   const [range, setRange] = useState({ ...ranges['7d'](), preset: '7d' });
   const [tagFilter, setTagFilter] = useState(null);
   const [dashboards, setDashboards] = useState([]);
@@ -125,10 +126,10 @@ export default function Dashboard() {
           <div className="subtitle">{range.label}{range.from ? ` · ${range.from} → ${range.to}` : ''}</div>
         </div>
         <div className="row-flex">
-          <button className="btn" onClick={renameDashboard} disabled={!activeDashboard}>Renomear</button>
-          <button className="btn danger" onClick={deleteDashboard} disabled={dashboards.length <= 1}>Excluir página</button>
+          {!readOnly && <button className="btn" onClick={renameDashboard} disabled={!activeDashboard}>Renomear</button>}
+          {!readOnly && <button className="btn danger" onClick={deleteDashboard} disabled={dashboards.length <= 1}>Excluir página</button>}
           <button className="btn" onClick={exportPDF}>↓ PDF</button>
-          <button className="btn accent" onClick={() => setShowNew(true)}>+ Widget</button>
+          {!readOnly && <button className="btn accent" onClick={() => setShowNew(true)}>+ Widget</button>}
         </div>
       </div>
 
@@ -140,7 +141,7 @@ export default function Dashboard() {
             onClick={() => setActiveDashboard(d)}
           >{d.title}</button>
         ))}
-        <button className="range-pill add" onClick={createDashboard}>NewTab</button>
+        {!readOnly && <button className="range-pill add" onClick={createDashboard}>NewTab</button>}
       </div>
 
       <div className="dash-toolbar">
@@ -156,7 +157,7 @@ export default function Dashboard() {
             <div className="empty-state">
               <h3>Nenhum widget ainda</h3>
               <p>Crie seu primeiro widget para começar a visualizar dados.</p>
-              <button className="btn accent mt-2" onClick={() => setShowNew(true)}>+ Criar widget</button>
+              {!readOnly && <button className="btn accent mt-2" onClick={() => setShowNew(true)}>+ Criar widget</button>}
             </div>
           </div>
         ) : (
@@ -168,8 +169,8 @@ export default function Dashboard() {
                 dataDaily={daily}
                 dataLeads={leads}
                 dataLanding={landing}
-                onEdit={() => setEditing(w)}
-                onDelete={() => deleteWidget(w.id)}
+                onEdit={readOnly ? null : () => setEditing(w)}
+                onDelete={readOnly ? null : () => deleteWidget(w.id)}
               />
             ))}
           </div>
