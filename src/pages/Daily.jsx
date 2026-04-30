@@ -18,6 +18,8 @@ export default function Daily() {
   const [show, setShow] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [selected, setSelected] = useState([]);
+  const [bulkTags, setBulkTags] = useState([]);
   const importRef = useRef(null);
 
   async function load() {
@@ -62,6 +64,22 @@ export default function Daily() {
   function del(id) {
     if (canSkipDeleteConfirm()) delNow(id);
     else setPendingDelete({ id, message: 'Remover registro?' });
+  }
+
+  function toggleSelected(id) {
+    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  async function applyBulkTags() {
+    for (const id of selected) {
+      const row = rows.find(r => r.id === id);
+      if (!row) continue;
+      const tagsNext = [...new Set([...(row.tags || []), ...bulkTags])];
+      await api.put(`/daily/${id}`, { ...row, tags: tagsNext });
+    }
+    setSelected([]);
+    setBulkTags([]);
+    load();
   }
 
   async function exportXLS() {
@@ -187,6 +205,14 @@ export default function Daily() {
       <div className="dash-toolbar">
         <TagFilter value={tagFilter} onChange={setTagFilter} />
       </div>
+      {selected.length > 0 && (
+        <div className="glass-sm bulk-bar">
+          <strong>{selected.length} selecionados</strong>
+          <TagSelector value={bulkTags} onChange={setBulkTags} />
+          <button className="btn accent" onClick={applyBulkTags} disabled={bulkTags.length === 0}>Aplicar tags</button>
+          <button className="btn ghost" onClick={() => setSelected([])}>Limpar</button>
+        </div>
+      )}
 
       <div className="glass" style={{ padding: 0, overflow: 'hidden' }}>
         {rows.length === 0 ? (
@@ -198,12 +224,13 @@ export default function Daily() {
           <table className="table">
             <thead>
               <tr>
-                <th>Data</th><th>Leads</th><th>CPL</th><th>Gasto</th><th>Visitas</th><th>Conversão</th><th>Tags</th><th></th>
+                <th><input type="checkbox" checked={rows.length > 0 && selected.length === rows.length} onChange={e => setSelected(e.target.checked ? rows.map(r => r.id) : [])} /></th><th>Data</th><th>Leads</th><th>CPL</th><th>Gasto</th><th>Visitas</th><th>Conversão</th><th>Tags</th><th></th>
               </tr>
             </thead>
             <tbody>
               {rows.map(r => (
                 <tr key={r.id}>
+                  <td><input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggleSelected(r.id)} /></td>
                   <td>{fmtBR(r.date)}</td>
                   <td>{r.leads}</td>
                   <td>R$ {Number(r.cpl).toFixed(2)}</td>

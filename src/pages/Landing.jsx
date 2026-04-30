@@ -16,6 +16,8 @@ export default function Landing() {
   const [form, setForm] = useState({ title: '', url: '', tags: [] });
   const [entryForm, setEntryForm] = useState({ period_start: addDays(today(), -6), period_end: today(), visits: '', leads: '' });
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [selected, setSelected] = useState([]);
+  const [bulkTags, setBulkTags] = useState([]);
   const importRef = useRef(null);
 
   async function load() {
@@ -76,6 +78,21 @@ export default function Landing() {
   }
 
   const filtered = tagFilter ? pages.filter(p => (p.tags || []).includes(tagFilter)) : pages;
+
+  function toggleSelected(id) {
+    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  async function applyBulkTags() {
+    for (const id of selected) {
+      const page = pages.find(p => p.id === id);
+      if (!page) continue;
+      await api.put(`/landing/${id}`, { title: page.title, url: page.url, tags: [...new Set([...(page.tags || []), ...bulkTags])] });
+    }
+    setSelected([]);
+    setBulkTags([]);
+    load();
+  }
 
   async function exportXLS() {
     const XLSX = await import('xlsx');
@@ -181,6 +198,22 @@ export default function Landing() {
       <div className="dash-toolbar">
         <TagFilter value={tagFilter} onChange={setTagFilter} />
       </div>
+      {filtered.length > 0 && (
+        <div className="dash-toolbar">
+          <label className="tag-chip">
+            <input type="checkbox" checked={selected.length === filtered.length} onChange={e => setSelected(e.target.checked ? filtered.map(p => p.id) : [])} />
+            Selecionar todas
+          </label>
+        </div>
+      )}
+      {selected.length > 0 && (
+        <div className="glass-sm bulk-bar">
+          <strong>{selected.length} selecionadas</strong>
+          <TagSelector value={bulkTags} onChange={setBulkTags} />
+          <button className="btn accent" onClick={applyBulkTags} disabled={bulkTags.length === 0}>Aplicar tags</button>
+          <button className="btn ghost" onClick={() => setSelected([])}>Limpar</button>
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div className="glass">
@@ -195,7 +228,10 @@ export default function Landing() {
             <div key={p.id} className="glass">
               <div className="row-flex" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <h3 style={{ marginBottom: 4 }}>{p.title}</h3>
+                  <div className="row-flex">
+                    <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggleSelected(p.id)} />
+                    <h3 style={{ marginBottom: 4 }}>{p.title}</h3>
+                  </div>
                   <a href={p.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, wordBreak: 'break-all' }}>{p.url}</a>
                   <div className="row-flex mt-1">
                     {(p.tags || []).map(id => {

@@ -17,6 +17,8 @@ export default function Leads() {
   const [show, setShow] = useState(false);
   const [editing, setEditing] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [selected, setSelected] = useState([]);
+  const [bulkTags, setBulkTags] = useState([]);
   const importRef = useRef(null);
   const [form, setForm] = useState({
     period_start: addDays(today(), -6),
@@ -88,6 +90,21 @@ export default function Leads() {
   function del(id) {
     if (canSkipDeleteConfirm()) delNow(id);
     else setPendingDelete({ id, message: 'Remover relatório?' });
+  }
+
+  function toggleSelected(id) {
+    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  async function applyBulkTags() {
+    for (const id of selected) {
+      const row = rows.find(r => r.id === id);
+      if (!row) continue;
+      await api.put(`/leads/${id}`, { ...row, tags: [...new Set([...(row.tags || []), ...bulkTags])] });
+    }
+    setSelected([]);
+    setBulkTags([]);
+    load();
   }
 
   function totalsOf(r) {
@@ -196,6 +213,22 @@ export default function Leads() {
       <div className="dash-toolbar">
         <TagFilter value={tagFilter} onChange={setTagFilter} />
       </div>
+      {rows.length > 0 && (
+        <div className="dash-toolbar">
+          <label className="tag-chip">
+            <input type="checkbox" checked={selected.length === rows.length} onChange={e => setSelected(e.target.checked ? rows.map(r => r.id) : [])} />
+            Selecionar todos
+          </label>
+        </div>
+      )}
+      {selected.length > 0 && (
+        <div className="glass-sm bulk-bar">
+          <strong>{selected.length} selecionados</strong>
+          <TagSelector value={bulkTags} onChange={setBulkTags} />
+          <button className="btn accent" onClick={applyBulkTags} disabled={bulkTags.length === 0}>Aplicar tags</button>
+          <button className="btn ghost" onClick={() => setSelected([])}>Limpar</button>
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <div className="glass">
@@ -212,7 +245,10 @@ export default function Leads() {
               <div key={r.id} className="glass">
                 <div className="row-flex mb-2" style={{ justifyContent: 'space-between' }}>
                   <div>
-                    <h3 style={{ marginBottom: 4 }}>{fmtBR(r.period_start)} → {fmtBR(r.period_end)}</h3>
+                    <div className="row-flex">
+                      <input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggleSelected(r.id)} />
+                      <h3 style={{ marginBottom: 4 }}>{fmtBR(r.period_start)} → {fmtBR(r.period_end)}</h3>
+                    </div>
                     <div className="row-flex">
                       {(r.tags || []).map(id => {
                         const tag = tags.find(x => x.id === id);

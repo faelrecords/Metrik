@@ -406,6 +406,13 @@ input, button, select, textarea { font-family: inherit; font-size: inherit; colo
   margin-bottom: 18px;
 }
 .dash-pages .add { border-style: dashed; }
+.bulk-bar {
+  margin-bottom: 18px;
+  display: grid;
+  grid-template-columns: auto minmax(240px, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+}
 
 .range-pills { display: flex; gap: 6px; flex-wrap: wrap; }
 .range-pill {
