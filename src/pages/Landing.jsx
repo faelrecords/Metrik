@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { today, addDays, fmtBR } from '../utils/dates.js';
 import TagSelector, { TagFilter, TagChip } from '../components/TagSelector.jsx';
+import { ensureTagIds, firstSheetRows, num, parseDate, readWorkbook, splitTags, writeTemplate } from '../utils/spreadsheet.js';
 
 export default function Landing() {
   const [pages, setPages] = useState([]);
@@ -12,6 +13,7 @@ export default function Landing() {
   const [entry, setEntry] = useState(null);
   const [form, setForm] = useState({ title: '', url: '', tags: [] });
   const [entryForm, setEntryForm] = useState({ period_start: addDays(today(), -6), period_end: today(), visits: '', leads: '' });
+  const importRef = useRef(null);
 
   async function load() {
     const [p, t] = await Promise.all([api.get('/landing'), api.get('/tags')]);
@@ -90,6 +92,63 @@ export default function Landing() {
     XLSX.writeFile(wb, `landing_pages.xlsx`);
   }
 
+  async function exportTemplate() {
+    await writeTemplate('template_landing_pages.xlsx', 'Landing pages', [{
+      Título: 'Landing principal',
+      URL: 'https://exemplo.com/landing',
+      'Início': addDays(today(), -6),
+      Fim: today(),
+      Visitas: 1000,
+      Leads: 100,
+      Tags: 'Landing',
+      Notas: 'Opcional'
+    }]);
+  }
+
+  async function importXLS(file) {
+    if (!file) return;
+    try {
+      const { XLSX, workbook } = await readWorkbook(file);
+      const data = firstSheetRows(XLSX, workbook);
+      const pageMap = new Map(pages.map(p => [`${p.title}|${p.url}`, p]));
+      let ok = 0;
+      let fail = 0;
+      for (const row of data) {
+        const title = String(row.Título || row.Titulo || row.Página || row.Pagina || '').trim();
+        const url = String(row.URL || '').trim();
+        const period_start = parseDate(row['Início'] || row.Inicio);
+        const period_end = parseDate(row.Fim);
+        if (!title || !url || !period_start || !period_end) { fail++; continue; }
+        try {
+          let page = pageMap.get(`${title}|${url}`);
+          if (!page) {
+            page = await api.post('/landing', {
+              title,
+              url,
+              tags: await ensureTagIds(splitTags(row.Tags), tags, api)
+            });
+            pageMap.set(`${title}|${url}`, page);
+          }
+          await api.post(`/landing/${page.id}/entries`, {
+            period_start,
+            period_end,
+            visits: num(row.Visitas),
+            leads: num(row.Leads)
+          });
+          ok++;
+        } catch {
+          fail++;
+        }
+      }
+      await load();
+      alert(`Importados: ${ok}${fail ? ` · Falhas: ${fail}` : ''}`);
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      if (importRef.current) importRef.current.value = '';
+    }
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -98,6 +157,9 @@ export default function Landing() {
           <div className="subtitle">Cadastro, registros de visitas/leads e taxa de conversão</div>
         </div>
         <div className="row-flex">
+          <button className="btn" onClick={exportTemplate}>Template</button>
+          <button className="btn" onClick={() => importRef.current?.click()}>Importar</button>
+          <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => importXLS(e.target.files?.[0])} />
           <button className="btn" onClick={exportXLS}>↓ Excel</button>
           <button className="btn accent" onClick={() => open(null)}>+ Nova landing</button>
         </div>

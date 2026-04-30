@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { today, addDays, ranges, fmtBR } from '../utils/dates.js';
 import DateRangePicker from '../components/DateRangePicker.jsx';
 import TagSelector, { TagFilter, TagChip } from '../components/TagSelector.jsx';
+import { ensureTagIds, firstSheetRows, num, parseDate, readWorkbook, splitTags, writeTemplate } from '../utils/spreadsheet.js';
 
 const newCampaign = () => ({ name: '', leads: '', cpl: '' });
 
@@ -13,6 +14,7 @@ export default function Leads() {
   const [tags, setTags] = useState([]);
   const [show, setShow] = useState(false);
   const [editing, setEditing] = useState(null);
+  const importRef = useRef(null);
   const [form, setForm] = useState({
     period_start: addDays(today(), -6),
     period_end: today(),
@@ -107,6 +109,63 @@ export default function Leads() {
     XLSX.writeFile(wb, `leads_${range.from}_${range.to}.xlsx`);
   }
 
+  async function exportTemplate() {
+    await writeTemplate('template_volume_leads.xlsx', 'Volume de leads', [{
+      'Início': addDays(today(), -6),
+      'Fim': today(),
+      Campanha: 'Meta Ads - Conversão',
+      Leads: 100,
+      CPL: 12.5,
+      Tags: 'Campanha',
+      Notas: 'Opcional'
+    }]);
+  }
+
+  async function importXLS(file) {
+    if (!file) return;
+    try {
+      const { XLSX, workbook } = await readWorkbook(file);
+      const data = firstSheetRows(XLSX, workbook);
+      const groups = new Map();
+      for (const row of data) {
+        const period_start = parseDate(row['Início'] || row.Inicio || row.period_start);
+        const period_end = parseDate(row.Fim || row.period_end);
+        const name = String(row.Campanha || row.Anuncio || row.Anúncio || '').trim();
+        if (!period_start || !period_end || !name) continue;
+        const key = `${period_start}|${period_end}|${row.Tags || ''}|${row.Notas || ''}`;
+        if (!groups.has(key)) {
+          groups.set(key, {
+            period_start,
+            period_end,
+            tags: splitTags(row.Tags),
+            notes: row.Notas || '',
+            campaigns: []
+          });
+        }
+        groups.get(key).campaigns.push({ name, leads: num(row.Leads), cpl: num(row.CPL) });
+      }
+      let ok = 0;
+      let fail = 0;
+      for (const group of groups.values()) {
+        try {
+          await api.post('/leads', {
+            ...group,
+            tags: await ensureTagIds(group.tags, tags, api)
+          });
+          ok++;
+        } catch {
+          fail++;
+        }
+      }
+      await load();
+      alert(`Importados: ${ok}${fail ? ` · Falhas: ${fail}` : ''}`);
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      if (importRef.current) importRef.current.value = '';
+    }
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -115,6 +174,9 @@ export default function Leads() {
           <div className="subtitle">Relatórios por período com leads e CPL por campanha</div>
         </div>
         <div className="row-flex">
+          <button className="btn" onClick={exportTemplate}>Template</button>
+          <button className="btn" onClick={() => importRef.current?.click()}>Importar</button>
+          <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => importXLS(e.target.files?.[0])} />
           <button className="btn" onClick={exportXLS}>↓ Excel</button>
           <button className="btn accent" onClick={() => open(null)}>+ Adicionar relatório</button>
         </div>

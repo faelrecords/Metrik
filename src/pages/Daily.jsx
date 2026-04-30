@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { today, ranges, fmtBR } from '../utils/dates.js';
 import DateRangePicker from '../components/DateRangePicker.jsx';
 import TagSelector, { TagFilter, TagChip } from '../components/TagSelector.jsx';
+import { ensureTagIds, firstSheetRows, num, parseDate, readWorkbook, splitTags, writeTemplate } from '../utils/spreadsheet.js';
 
 const EMPTY = { date: today(), leads: '', cpl: '', total_spent: '', visits: '', conversion_rate: '', tags: [], notes: '' };
 
@@ -14,6 +15,7 @@ export default function Daily() {
   const [editing, setEditing] = useState(null);
   const [show, setShow] = useState(false);
   const [form, setForm] = useState(EMPTY);
+  const importRef = useRef(null);
 
   async function load() {
     const params = new URLSearchParams({ from: range.from, to: range.to });
@@ -72,6 +74,57 @@ export default function Daily() {
     XLSX.writeFile(wb, `diario_${range.from}_${range.to}.xlsx`);
   }
 
+  async function exportTemplate() {
+    await writeTemplate('template_metricas_diarias.xlsx', 'Metricas diarias', [{
+      Data: today(),
+      Leads: 100,
+      CPL: 12.5,
+      'Gasto total': 1250,
+      Visitas: 1000,
+      'Conversão %': 10,
+      Tags: 'Conta de anúncio',
+      Notas: 'Opcional'
+    }]);
+  }
+
+  async function importXLS(file) {
+    if (!file) return;
+    try {
+      const { XLSX, workbook } = await readWorkbook(file);
+      const data = firstSheetRows(XLSX, workbook);
+      let ok = 0;
+      let fail = 0;
+      for (const row of data) {
+        const date = parseDate(row.Data || row.data);
+        if (!date) { fail++; continue; }
+        const payload = {
+          date,
+          leads: num(row.Leads),
+          cpl: num(row.CPL),
+          total_spent: num(row['Gasto total'] || row.Gasto),
+          visits: num(row.Visitas),
+          conversion_rate: num(row['Conversão %'] || row.Conversao || row['Conversao %']),
+          tags: await ensureTagIds(splitTags(row.Tags), tags, api),
+          notes: row.Notas || ''
+        };
+        const existing = rows.find(r => r.date === date);
+        try {
+          if (existing) await api.put(`/daily/${existing.id}`, payload);
+          else await api.post('/daily', payload);
+          ok++;
+        } catch {
+          fail++;
+        }
+      }
+      await load();
+      alert(`Importados: ${ok}${fail ? ` · Falhas: ${fail}` : ''}`);
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      if (importRef.current) importRef.current.value = '';
+    }
+  }
+
   async function exportPDF() {
     const { default: jsPDF } = await import('jspdf');
     const pdf = new jsPDF('p', 'mm', 'a4');
@@ -111,6 +164,9 @@ export default function Daily() {
           <div className="subtitle">Registro diário de leads, CPL, gasto, visitas e conversão</div>
         </div>
         <div className="row-flex">
+          <button className="btn" onClick={exportTemplate}>Template</button>
+          <button className="btn" onClick={() => importRef.current?.click()}>Importar</button>
+          <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => importXLS(e.target.files?.[0])} />
           <button className="btn" onClick={exportXLS}>↓ Excel</button>
           <button className="btn" onClick={exportPDF}>↓ PDF</button>
           <button className="btn accent" onClick={() => open(null)}>+ Registrar</button>
