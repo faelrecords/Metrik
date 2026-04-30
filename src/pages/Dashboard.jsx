@@ -21,6 +21,7 @@ export default function Dashboard({ user }) {
   const [editing, setEditing] = useState(null);
   const [showNew, setShowNew] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const dashRef = useRef(null);
 
   async function loadDashboards() {
@@ -126,6 +127,7 @@ export default function Dashboard({ user }) {
           <div className="subtitle">{range.label}{range.from ? ` · ${range.from} → ${range.to}` : ''}</div>
         </div>
         <div className="row-flex">
+          <button className="btn" onClick={() => setFiltersOpen(true)}>Filtros</button>
           {!readOnly && <button className="btn" onClick={renameDashboard} disabled={!activeDashboard}>Renomear</button>}
           {!readOnly && <button className="btn danger" onClick={deleteDashboard} disabled={dashboards.length <= 1}>Excluir página</button>}
           <button className="btn" onClick={exportPDF}>↓ PDF</button>
@@ -142,13 +144,6 @@ export default function Dashboard({ user }) {
           >{d.title}</button>
         ))}
         {!readOnly && <button className="range-pill add" onClick={createDashboard}>NewTab</button>}
-      </div>
-
-      <div className="dash-toolbar">
-        <DateRangePicker value={range} onChange={setRange} />
-      </div>
-      <div className="dash-toolbar">
-        <TagFilter value={tagFilter} onChange={setTagFilter} />
       </div>
 
       <div ref={dashRef}>
@@ -190,6 +185,24 @@ export default function Dashboard({ user }) {
           onCancel={() => setPendingDelete(null)}
           onConfirm={() => pendingDelete.type === 'dashboard' ? deleteDashboardNow(pendingDelete.id) : deleteWidgetNow(pendingDelete.id)}
         />
+      )}
+      {filtersOpen && (
+        <div className="drawer-backdrop" onClick={() => setFiltersOpen(false)}>
+          <aside className="filter-drawer" onClick={e => e.stopPropagation()}>
+            <div className="drawer-head">
+              <h2>Filtros</h2>
+              <button className="modal-close" onClick={() => setFiltersOpen(false)}>×</button>
+            </div>
+            <div className="drawer-section">
+              <div className="label">Período</div>
+              <DateRangePicker value={range} onChange={setRange} />
+            </div>
+            <div className="drawer-section">
+              <div className="label">Tags</div>
+              <TagFilter value={tagFilter} onChange={setTagFilter} />
+            </div>
+          </aside>
+        </div>
       )}
     </div>
   );

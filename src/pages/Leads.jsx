@@ -21,6 +21,7 @@ export default function Leads({ readOnly = false }) {
   const [selected, setSelected] = useState([]);
   const [bulkTags, setBulkTags] = useState([]);
   const [page, setPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const importRef = useRef(null);
   const pageSize = 31;
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
@@ -205,6 +206,7 @@ export default function Leads({ readOnly = false }) {
           <div className="subtitle">Relatórios por período com leads e CPL por campanha</div>
         </div>
         <div className="row-flex">
+          <button className="btn" onClick={() => setFiltersOpen(true)}>Filtros</button>
           {!readOnly && <button className="btn" onClick={exportTemplate}>Template</button>}
           {!readOnly && <button className="btn" onClick={() => importRef.current?.click()}>Importar</button>}
           {!readOnly && <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => importXLS(e.target.files?.[0])} />}
@@ -213,20 +215,6 @@ export default function Leads({ readOnly = false }) {
         </div>
       </div>
 
-      <div className="dash-toolbar">
-        <DateRangePicker value={range} onChange={setRange} />
-      </div>
-      <div className="dash-toolbar">
-        <TagFilter value={tagFilter} onChange={setTagFilter} />
-      </div>
-      {!readOnly && rows.length > 0 && (
-        <div className="dash-toolbar">
-          <label className="tag-chip">
-            <input type="checkbox" checked={pageRows.length > 0 && pageRows.every(r => selected.includes(r.id))} onChange={e => setSelected(e.target.checked ? [...new Set([...selected, ...pageRows.map(r => r.id)])] : selected.filter(id => !pageRows.some(r => r.id === id)))} />
-            Selecionar página
-          </label>
-        </div>
-      )}
       {!readOnly && selected.length > 0 && (
         <div className="glass-sm bulk-bar">
           <strong>{selected.length} selecionados</strong>
@@ -361,6 +349,33 @@ export default function Leads({ readOnly = false }) {
           onCancel={() => setPendingDelete(null)}
           onConfirm={() => delNow(pendingDelete.id)}
         />
+      )}
+      {filtersOpen && (
+        <div className="drawer-backdrop" onClick={() => setFiltersOpen(false)}>
+          <aside className="filter-drawer" onClick={e => e.stopPropagation()}>
+            <div className="drawer-head">
+              <h2>Filtros</h2>
+              <button className="modal-close" onClick={() => setFiltersOpen(false)}>×</button>
+            </div>
+            <div className="drawer-section">
+              <div className="label">Período</div>
+              <DateRangePicker value={range} onChange={setRange} />
+            </div>
+            <div className="drawer-section">
+              <div className="label">Tags</div>
+              <TagFilter value={tagFilter} onChange={setTagFilter} />
+            </div>
+            {!readOnly && rows.length > 0 && (
+              <div className="drawer-section">
+                <div className="label">Ações em massa</div>
+                <label className="tag-chip">
+                  <input type="checkbox" checked={pageRows.length > 0 && pageRows.every(r => selected.includes(r.id))} onChange={e => setSelected(e.target.checked ? [...new Set([...selected, ...pageRows.map(r => r.id)])] : selected.filter(id => !pageRows.some(r => r.id === id)))} />
+                  Selecionar página
+                </label>
+              </div>
+            )}
+          </aside>
+        </div>
       )}
     </div>
   );

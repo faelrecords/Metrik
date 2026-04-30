@@ -26,7 +26,9 @@ function Navbar({ user, onLogout }) {
   const nav = useNavigate();
   const loc = useLocation();
   const canWrite = ['admin', 'super_admin'].includes(user.role);
-  const links = NAV.filter(n => (!n.adminOnly || canWrite) && (!n.writeOnly || canWrite));
+  const links = user.role === 'user'
+    ? NAV.filter(n => ['/', '/diario', '/leads', '/landing'].includes(n.to))
+    : NAV.filter(n => (!n.adminOnly || canWrite) && (!n.writeOnly || canWrite));
   return (
     <nav className="navbar">
       <div className="brand" onClick={() => nav('/')} style={{ cursor: 'pointer' }}>

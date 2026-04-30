@@ -22,6 +22,7 @@ export default function Daily({ readOnly = false }) {
   const [selected, setSelected] = useState([]);
   const [bulkTags, setBulkTags] = useState([]);
   const [page, setPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const importRef = useRef(null);
   const pageSize = 31;
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
@@ -196,6 +197,7 @@ export default function Daily({ readOnly = false }) {
           <div className="subtitle">Registro diário de leads, CPL, gasto, visitas e conversão</div>
         </div>
         <div className="row-flex">
+          <button className="btn" onClick={() => setFiltersOpen(true)}>Filtros</button>
           {!readOnly && <button className="btn" onClick={exportTemplate}>Template</button>}
           {!readOnly && <button className="btn" onClick={() => importRef.current?.click()}>Importar</button>}
           {!readOnly && <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => importXLS(e.target.files?.[0])} />}
@@ -205,12 +207,6 @@ export default function Daily({ readOnly = false }) {
         </div>
       </div>
 
-      <div className="dash-toolbar">
-        <DateRangePicker value={range} onChange={setRange} />
-      </div>
-      <div className="dash-toolbar">
-        <TagFilter value={tagFilter} onChange={setTagFilter} />
-      </div>
       {!readOnly && selected.length > 0 && (
         <div className="glass-sm bulk-bar">
           <strong>{selected.length} selecionados</strong>
@@ -321,6 +317,24 @@ export default function Daily({ readOnly = false }) {
           onCancel={() => setPendingDelete(null)}
           onConfirm={() => delNow(pendingDelete.id)}
         />
+      )}
+      {filtersOpen && (
+        <div className="drawer-backdrop" onClick={() => setFiltersOpen(false)}>
+          <aside className="filter-drawer" onClick={e => e.stopPropagation()}>
+            <div className="drawer-head">
+              <h2>Filtros</h2>
+              <button className="modal-close" onClick={() => setFiltersOpen(false)}>×</button>
+            </div>
+            <div className="drawer-section">
+              <div className="label">Período</div>
+              <DateRangePicker value={range} onChange={setRange} />
+            </div>
+            <div className="drawer-section">
+              <div className="label">Tags</div>
+              <TagFilter value={tagFilter} onChange={setTagFilter} />
+            </div>
+          </aside>
+        </div>
       )}
     </div>
   );
