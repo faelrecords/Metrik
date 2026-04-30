@@ -25,6 +25,7 @@ export default function Landing({ readOnly = false }) {
   const [activePageId, setActivePageId] = useState(null);
   const [page, setPage] = useState(1);
   const [groupModal, setGroupModal] = useState(null);
+  const [bulkTagModal, setBulkTagModal] = useState(false);
   const [groups, setGroups] = useState(() => {
     try { return JSON.parse(localStorage.getItem('metrik_landing_groups') || '["Geral"]'); }
     catch { return ['Geral']; }
@@ -158,6 +159,12 @@ export default function Landing({ readOnly = false }) {
     load();
   }
 
+  function openBulkTagModal() {
+    setSelected(pageItems.map(p => p.id));
+    setBulkTags([]);
+    setBulkTagModal(true);
+  }
+
   async function exportXLS() {
     const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
@@ -264,26 +271,18 @@ export default function Landing({ readOnly = false }) {
       </div>
       <div className="dash-toolbar">
         <TagFilter value={tagFilter} onChange={setTagFilter} />
+        {!readOnly && filtered.length > 0 && (
+          <button className="btn sm ghost" onClick={openBulkTagModal}>Selecionar visíveis</button>
+        )}
       </div>
       <div className="dash-toolbar landing-groups">
         <span className="label">Grupos</span>
-        {!readOnly && filtered.length > 0 && (
-          <button className="btn sm ghost" onClick={() => setSelected(pageItems.map(p => p.id))}>Selecionar visíveis</button>
-        )}
         <button className={`range-pill ${activeGroup === 'Todas' ? 'active' : ''}`} onClick={() => pickGroup('Todas')}>Todas</button>
         {groups.map(g => (
           <button key={g} className={`range-pill ${activeGroup === g ? 'active' : ''}`} onClick={() => pickGroup(g)}>{g}</button>
         ))}
         {!readOnly && <button className="range-pill add" onClick={createGroup}>+ Grupo</button>}
       </div>
-      {!readOnly && selected.length > 0 && (
-        <div className="glass-sm bulk-bar">
-          <strong>{selected.length} selecionadas</strong>
-          <TagSelector value={bulkTags} onChange={setBulkTags} />
-          <button className="btn accent" onClick={applyBulkTags} disabled={bulkTags.length === 0}>Aplicar tags</button>
-          <button className="btn ghost" onClick={() => setSelected([])}>Limpar</button>
-        </div>
-      )}
 
       {filtered.length === 0 ? (
         <div className="glass">
@@ -481,6 +480,24 @@ export default function Landing({ readOnly = false }) {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+      {bulkTagModal && (
+        <div className="modal-backdrop" onClick={() => setBulkTagModal(false)}>
+          <div className="modal small" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Aplicar tags</h2>
+              <button className="modal-close" onClick={() => setBulkTagModal(false)}>×</button>
+            </div>
+            <div className="field">
+              <label className="label">{selected.length} landing pages selecionadas</label>
+              <TagSelector value={bulkTags} onChange={setBulkTags} />
+            </div>
+            <div className="modal-actions">
+              <button className="btn ghost" onClick={() => { setBulkTagModal(false); setSelected([]); setBulkTags([]); }}>Cancelar</button>
+              <button className="btn accent" disabled={bulkTags.length === 0} onClick={async () => { await applyBulkTags(); setBulkTagModal(false); }}>Aplicar</button>
+            </div>
           </div>
         </div>
       )}
