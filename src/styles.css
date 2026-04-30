@@ -455,6 +455,7 @@ input, button, select, textarea { font-family: inherit; font-size: inherit; colo
   grid-template-columns: repeat(4, auto);
   gap: 6px;
 }
+.landing-groups { align-items: center; }
 
 .widgets-grid {
   display: grid;

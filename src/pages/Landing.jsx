@@ -24,6 +24,11 @@ export default function Landing() {
   const [bulkTags, setBulkTags] = useState([]);
   const [activePageId, setActivePageId] = useState(null);
   const [page, setPage] = useState(1);
+  const [groups, setGroups] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('metrik_landing_groups') || '["Geral"]'); }
+    catch { return ['Geral']; }
+  });
+  const [activeGroup, setActiveGroup] = useState(() => localStorage.getItem('metrik_landing_active_group') || 'Todas');
   const importRef = useRef(null);
 
   async function load() {
@@ -93,12 +98,41 @@ export default function Landing() {
     const totalVisits = entries.reduce((s, e) => s + Number(e.visits || 0), 0);
     const totalLeads = entries.reduce((s, e) => s + Number(e.leads || 0), 0);
     return { ...p, entries, totalVisits, totalLeads, conversion: totalVisits > 0 ? (totalLeads / totalVisits) * 100 : 0 };
-  });
+  }).filter(p => activeGroup === 'Todas' || (p.group || 'Geral') === activeGroup);
   const pageSize = 31;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageItems = filtered.slice((page - 1) * pageSize, page * pageSize);
   const activePage = filtered.find(p => p.id === activePageId) || filtered[0] || null;
   useEffect(() => { setPage(1); }, [tagFilter, range.from, range.to]);
+
+  function saveGroups(next) {
+    setGroups(next);
+    localStorage.setItem('metrik_landing_groups', JSON.stringify(next));
+  }
+
+  function pickGroup(group) {
+    setActiveGroup(group);
+    localStorage.setItem('metrik_landing_active_group', group);
+    setActivePageId(null);
+  }
+
+  async function createGroup() {
+    const name = prompt('Nome do grupo?');
+    if (!name) return;
+    const next = [...new Set([...groups, name.trim()].filter(Boolean))];
+    saveGroups(next);
+    pickGroup(name.trim());
+  }
+
+  async function setPageGroup(page) {
+    const group = prompt('Grupo da landing?', page.group || 'Geral');
+    if (!group) return;
+    const name = group.trim();
+    if (!groups.includes(name)) saveGroups([...groups, name]);
+    await api.put(`/landing/${page.id}`, { title: page.title, url: page.url, tags: page.tags || [], group: name });
+    await load();
+    pickGroup(name);
+  }
 
   function toggleSelected(id) {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -222,12 +256,17 @@ export default function Landing() {
       <div className="dash-toolbar">
         <TagFilter value={tagFilter} onChange={setTagFilter} />
       </div>
+      <div className="dash-toolbar landing-groups">
+        <span className="label">Grupos</span>
+        <button className={`range-pill ${activeGroup === 'Todas' ? 'active' : ''}`} onClick={() => pickGroup('Todas')}>Todas</button>
+        {groups.map(g => (
+          <button key={g} className={`range-pill ${activeGroup === g ? 'active' : ''}`} onClick={() => pickGroup(g)}>{g}</button>
+        ))}
+        <button className="range-pill add" onClick={createGroup}>+ Grupo</button>
+      </div>
       {filtered.length > 0 && (
         <div className="dash-toolbar">
-          <label className="tag-chip">
-            <input type="checkbox" checked={pageItems.length > 0 && pageItems.every(p => selected.includes(p.id))} onChange={e => setSelected(e.target.checked ? [...new Set([...selected, ...pageItems.map(p => p.id)])] : selected.filter(id => !pageItems.some(p => p.id === id)))} />
-            Selecionar página
-          </label>
+          <button className="btn sm ghost" onClick={() => setSelected(pageItems.map(p => p.id))}>Selecionar visíveis</button>
         </div>
       )}
       {selected.length > 0 && (
@@ -275,6 +314,7 @@ export default function Landing() {
                 </div>
                 <div className="row-flex">
                   <button className="btn sm ghost" onClick={() => open(activePage)}>Editar</button>
+                  <button className="btn sm ghost" onClick={() => setPageGroup(activePage)}>Grupo</button>
                   <button className="btn sm danger" onClick={() => del(activePage.id)}>×</button>
                 </div>
               </div>
