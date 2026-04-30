@@ -140,7 +140,7 @@ export default function Dashboard() {
             onClick={() => setActiveDashboard(d)}
           >{d.title}</button>
         ))}
-        <button className="range-pill add" onClick={createDashboard}>+ Dashboard</button>
+        <button className="range-pill add" onClick={createDashboard}>NewTab</button>
       </div>
 
       <div className="dash-toolbar">
