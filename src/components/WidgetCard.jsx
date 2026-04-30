@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area,
   PieChart, Pie, Cell, XAxis, YAxis, Tooltip, CartesianGrid, Legend
@@ -37,7 +37,24 @@ const FIELD_LABELS = {
   conversion_rate: 'Conversão'
 };
 
+function EyeIcon({ hidden }) {
+  return hidden ? (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 3l18 18" />
+      <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+      <path d="M9.5 5.4A10.8 10.8 0 0 1 12 5c5 0 8.5 4.4 9.5 7a13 13 0 0 1-2.3 3.6" />
+      <path d="M6.4 6.9A13 13 0 0 0 2.5 12c1 2.6 4.5 7 9.5 7 1.4 0 2.7-.3 3.8-.9" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M2.5 12c1-2.6 4.5-7 9.5-7s8.5 4.4 9.5 7c-1 2.6-4.5 7-9.5 7s-8.5-4.4-9.5-7Z" />
+      <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+    </svg>
+  );
+}
+
 export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, onEdit, onDelete }) {
+  const [dataHidden, setDataHidden] = useState(false);
   const filtered = useMemo(() => {
     if (widget.source === 'daily') return dataDaily;
     if (widget.source === 'leads') {
@@ -53,6 +70,20 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
     if (widget.source === 'landing') return dataLanding;
     return [];
   }, [widget.source, dataDaily, dataLeads, dataLanding]);
+  const actions = (
+    <div className="widget-actions">
+      <button
+        type="button"
+        onClick={() => setDataHidden(v => !v)}
+        title={dataHidden ? 'Mostrar dados' : 'Ocultar dados'}
+        aria-label={dataHidden ? 'Mostrar dados' : 'Ocultar dados'}
+      >
+        <EyeIcon hidden={dataHidden} />
+      </button>
+      {onEdit && <button onClick={onEdit}>✎</button>}
+      {onDelete && <button onClick={onDelete}>×</button>}
+    </div>
+  );
 
   // KPI mode
   if (widget.chart_type === 'kpi') {
@@ -61,15 +92,10 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
       <div className={`widget size-${widget.size || 3}`}>
         <div className="widget-head">
           <div className="widget-title">{widget.title}</div>
-          {(onEdit || onDelete) && (
-            <div className="widget-actions">
-              {onEdit && <button onClick={onEdit}>✎</button>}
-              {onDelete && <button onClick={onDelete}>×</button>}
-            </div>
-          )}
+          {actions}
         </div>
         <div className="widget-kpi">
-          <div className="value" style={{ color: widget.color }}>{fmt(value, widget.field)}</div>
+          <div className={`value ${dataHidden ? 'masked-value' : ''}`} style={{ color: widget.color }}>{dataHidden ? '••••' : fmt(value, widget.field)}</div>
           <div className="label">{widget.aggregation === 'avg' ? 'Média' : widget.aggregation === 'sum' ? 'Total' : widget.aggregation} de {FIELD_LABELS[widget.field] || widget.field}</div>
         </div>
       </div>
@@ -99,12 +125,7 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
     <div className={`widget size-${widget.size || 6}`}>
       <div className="widget-head">
         <div className="widget-title">{widget.title}</div>
-        {(onEdit || onDelete) && (
-          <div className="widget-actions">
-            {onEdit && <button onClick={onEdit}>✎</button>}
-            {onDelete && <button onClick={onDelete}>×</button>}
-          </div>
-        )}
+        {actions}
       </div>
       <div className="widget-chart">
         {chartData.length === 0 ? (
@@ -114,10 +135,10 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
         ) : widget.chart_type === 'pie' ? (
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
-              <Pie data={chartData} dataKey="value" nameKey="name" outerRadius={80} label={PIE_LABEL}>
+              <Pie data={chartData} dataKey="value" nameKey="name" outerRadius={80} label={dataHidden ? false : PIE_LABEL}>
                 {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
-              <Tooltip contentStyle={{ background: 'rgba(20,20,21,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e8e7ec' }} />
+              {!dataHidden && <Tooltip contentStyle={{ background: 'rgba(20,20,21,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e8e7ec' }} />}
             </PieChart>
           </ResponsiveContainer>
         ) : widget.chart_type === 'bar' ? (
@@ -125,8 +146,8 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="name" stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
-              <YAxis stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
-              <Tooltip contentStyle={{ background: 'rgba(20,20,21,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e8e7ec' }} />
+              <YAxis stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
+              {!dataHidden && <Tooltip contentStyle={{ background: 'rgba(20,20,21,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e8e7ec' }} />}
               <Bar dataKey="value" fill={widget.color} radius={[6, 6, 0, 0]} minPointSize={1} />
             </BarChart>
           </ResponsiveContainer>
@@ -141,8 +162,8 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="name" stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
-              <YAxis stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
-              <Tooltip contentStyle={{ background: 'rgba(20,20,21,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e8e7ec' }} />
+              <YAxis stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
+              {!dataHidden && <Tooltip contentStyle={{ background: 'rgba(20,20,21,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e8e7ec' }} />}
               <Area type="monotone" dataKey="value" stroke={widget.color} fill={`url(#g${widget.id})`} strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
@@ -151,8 +172,8 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="name" stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
-              <YAxis stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
-              <Tooltip contentStyle={{ background: 'rgba(20,20,21,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e8e7ec' }} />
+              <YAxis stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
+              {!dataHidden && <Tooltip contentStyle={{ background: 'rgba(20,20,21,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e8e7ec' }} />}
               <Line type="monotone" dataKey="value" stroke={widget.color} strokeWidth={2} dot={{ fill: widget.color, r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
