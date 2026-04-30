@@ -6,7 +6,7 @@ import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
 const PROVIDERS = [
   { v: 'openai', label: 'OpenAI', placeholder: 'sk-...', defaultModel: 'gpt-4o-mini', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'] },
   { v: 'anthropic', label: 'Anthropic (Claude)', placeholder: 'sk-ant-...', defaultModel: 'claude-sonnet-4-20250514', models: ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001', 'claude-sonnet-4-20250514'] },
-  { v: 'gemini', label: 'Google Gemini', placeholder: 'AIza...', defaultModel: 'gemini-1.5-flash', models: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.0-flash-exp'] }
+  { v: 'gemini', label: 'Google Gemini', placeholder: 'AIza...', defaultModel: 'gemini-2.5-flash', models: ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro', 'gemini-flash-latest'] }
 ];
 
 export default function LLMKeys() {
