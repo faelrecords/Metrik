@@ -455,7 +455,53 @@ input, button, select, textarea { font-family: inherit; font-size: inherit; colo
   grid-template-columns: repeat(4, auto);
   gap: 6px;
 }
-.landing-groups { align-items: center; }
+.landing-control-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 18px 0;
+}
+
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.filter-drawer {
+  width: min(420px, 100vw);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-left: 1px solid var(--glass-border);
+  box-shadow: -18px 0 42px rgba(0, 0, 0, 0.45);
+  padding: 22px;
+}
+
+.drawer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.drawer-section {
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+}
+
+.drawer-section .range-pills,
+.drawer-section .row-flex {
+  gap: 8px;
+}
 
 .widgets-grid {
   display: grid;

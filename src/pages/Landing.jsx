@@ -26,6 +26,7 @@ export default function Landing({ readOnly = false }) {
   const [page, setPage] = useState(1);
   const [groupModal, setGroupModal] = useState(null);
   const [bulkTagModal, setBulkTagModal] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [groups, setGroups] = useState(() => {
     try { return JSON.parse(localStorage.getItem('metrik_landing_groups') || '["Geral"]'); }
     catch { return ['Geral']; }
@@ -258,6 +259,7 @@ export default function Landing({ readOnly = false }) {
           <div className="subtitle">Cadastro, registros de visitas/leads e taxa de conversão</div>
         </div>
         <div className="row-flex">
+          <button className="btn" onClick={() => setFiltersOpen(true)}>Filtros</button>
           {!readOnly && <button className="btn" onClick={exportTemplate}>Template</button>}
           {!readOnly && <button className="btn" onClick={() => importRef.current?.click()}>Importar</button>}
           {!readOnly && <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => importXLS(e.target.files?.[0])} />}
@@ -266,16 +268,7 @@ export default function Landing({ readOnly = false }) {
         </div>
       </div>
 
-      <div className="dash-toolbar">
-        <DateRangePicker value={range} onChange={setRange} />
-      </div>
-      <div className="dash-toolbar">
-        <TagFilter value={tagFilter} onChange={setTagFilter} />
-        {!readOnly && filtered.length > 0 && (
-          <button className="btn sm ghost" onClick={openBulkTagModal}>Selecionar visíveis</button>
-        )}
-      </div>
-      <div className="dash-toolbar landing-groups">
+      <div className="landing-control-row">
         <span className="label">Grupos</span>
         <button className={`range-pill ${activeGroup === 'Todas' ? 'active' : ''}`} onClick={() => pickGroup('Todas')}>Todas</button>
         {groups.map(g => (
@@ -430,6 +423,30 @@ export default function Landing({ readOnly = false }) {
               <button className="btn accent" onClick={saveEntry}>Salvar</button>
             </div>
           </div>
+        </div>
+      )}
+      {filtersOpen && (
+        <div className="drawer-backdrop" onClick={() => setFiltersOpen(false)}>
+          <aside className="filter-drawer" onClick={e => e.stopPropagation()}>
+            <div className="drawer-head">
+              <h2>Filtros</h2>
+              <button className="modal-close" onClick={() => setFiltersOpen(false)}>×</button>
+            </div>
+            <div className="drawer-section">
+              <div className="label">Período</div>
+              <DateRangePicker value={range} onChange={setRange} />
+            </div>
+            <div className="drawer-section">
+              <div className="label">Tags</div>
+              <TagFilter value={tagFilter} onChange={setTagFilter} />
+            </div>
+            {!readOnly && filtered.length > 0 && (
+              <div className="drawer-section">
+                <div className="label">Ações em massa</div>
+                <button className="btn" onClick={openBulkTagModal}>Selecionar visíveis</button>
+              </div>
+            )}
+          </aside>
         </div>
       )}
       {groupModal && (
