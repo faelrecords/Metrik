@@ -267,17 +267,15 @@ export default function Landing({ readOnly = false }) {
       </div>
       <div className="dash-toolbar landing-groups">
         <span className="label">Grupos</span>
+        {!readOnly && filtered.length > 0 && (
+          <button className="btn sm ghost" onClick={() => setSelected(pageItems.map(p => p.id))}>Selecionar visíveis</button>
+        )}
         <button className={`range-pill ${activeGroup === 'Todas' ? 'active' : ''}`} onClick={() => pickGroup('Todas')}>Todas</button>
         {groups.map(g => (
           <button key={g} className={`range-pill ${activeGroup === g ? 'active' : ''}`} onClick={() => pickGroup(g)}>{g}</button>
         ))}
         {!readOnly && <button className="range-pill add" onClick={createGroup}>+ Grupo</button>}
       </div>
-      {!readOnly && filtered.length > 0 && (
-        <div className="dash-toolbar">
-          <button className="btn sm ghost" onClick={() => setSelected(pageItems.map(p => p.id))}>Selecionar visíveis</button>
-        </div>
-      )}
       {!readOnly && selected.length > 0 && (
         <div className="glass-sm bulk-bar">
           <strong>{selected.length} selecionadas</strong>
