@@ -11,6 +11,8 @@ import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
 export default function Dashboard() {
   const [range, setRange] = useState({ ...ranges['7d'](), preset: '7d' });
   const [tagFilter, setTagFilter] = useState(null);
+  const [dashboards, setDashboards] = useState([]);
+  const [activeDashboard, setActiveDashboard] = useState(null);
   const [widgets, setWidgets] = useState([]);
   const [daily, setDaily] = useState([]);
   const [leads, setLeads] = useState([]);
@@ -20,14 +22,24 @@ export default function Dashboard() {
   const [pendingDelete, setPendingDelete] = useState(null);
   const dashRef = useRef(null);
 
+  async function loadDashboards() {
+    const list = await api.get('/dashboards');
+    setDashboards(list);
+    setActiveDashboard(current => current && list.find(d => d.id === current.id) ? current : list[0] || null);
+    return list;
+  }
+
   async function loadData() {
     const params = new URLSearchParams({ from: range.from, to: range.to });
     if (tagFilter) params.set('tag', tagFilter);
+    const list = dashboards.length ? dashboards : await loadDashboards();
+    const dash = activeDashboard || list[0];
+    if (!dash) return;
     const [d, l, lp, ws] = await Promise.all([
       api.get(`/daily?${params}`),
       api.get(`/leads?${params}`),
       api.get('/landing'),
-      api.get('/widgets')
+      api.get(`/widgets?dashboard_id=${dash.id}`)
     ]);
     setDaily(d);
     setLeads(l);
@@ -35,13 +47,46 @@ export default function Dashboard() {
     setWidgets(ws);
   }
 
-  useEffect(() => { loadData(); }, [range.from, range.to, tagFilter]);
+  useEffect(() => { loadDashboards(); }, []);
+  useEffect(() => { if (activeDashboard) loadData(); }, [range.from, range.to, tagFilter, activeDashboard?.id]);
+
+  async function createDashboard() {
+    const title = prompt('Nome do dashboard?') || 'Novo dashboard';
+    const dash = await api.post('/dashboards', { title });
+    const list = await loadDashboards();
+    setDashboards(list);
+    setActiveDashboard(dash);
+  }
+
+  async function renameDashboard() {
+    if (!activeDashboard) return;
+    const title = prompt('Novo nome?', activeDashboard.title);
+    if (!title) return;
+    const updated = await api.put(`/dashboards/${activeDashboard.id}`, { title });
+    setActiveDashboard(updated);
+    loadDashboards();
+  }
+
+  async function deleteDashboardNow(id) {
+    await api.del(`/dashboards/${id}`);
+    setPendingDelete(null);
+    const list = await loadDashboards();
+    setActiveDashboard(list[0] || null);
+    setWidgets([]);
+  }
+
+  function deleteDashboard() {
+    if (!activeDashboard) return;
+    if (canSkipDeleteConfirm()) deleteDashboardNow(activeDashboard.id);
+    else setPendingDelete({ type: 'dashboard', id: activeDashboard.id, message: 'Remover dashboard e seus widgets?' });
+  }
 
   async function saveWidget(w) {
+    const payload = { ...w, dashboard_id: activeDashboard?.id };
     if (editing) {
-      await api.put(`/widgets/${editing.id}`, w);
+      await api.put(`/widgets/${editing.id}`, payload);
     } else {
-      await api.post('/widgets', w);
+      await api.post('/widgets', payload);
     }
     setEditing(null);
     setShowNew(false);
@@ -56,7 +101,7 @@ export default function Dashboard() {
 
   function deleteWidget(id) {
     if (canSkipDeleteConfirm()) deleteWidgetNow(id);
-    else setPendingDelete({ id, message: 'Remover widget?' });
+    else setPendingDelete({ type: 'widget', id, message: 'Remover widget?' });
   }
 
   async function exportPDF() {
@@ -76,13 +121,26 @@ export default function Dashboard() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Dashboard</h1>
-          <div className="subtitle">{range.label} · {range.from} → {range.to}</div>
+          <h1>{activeDashboard?.title || 'Dashboards'}</h1>
+          <div className="subtitle">{range.label}{range.from ? ` · ${range.from} → ${range.to}` : ''}</div>
         </div>
         <div className="row-flex">
+          <button className="btn" onClick={renameDashboard} disabled={!activeDashboard}>Renomear</button>
+          <button className="btn danger" onClick={deleteDashboard} disabled={dashboards.length <= 1}>Excluir página</button>
           <button className="btn" onClick={exportPDF}>↓ PDF</button>
           <button className="btn accent" onClick={() => setShowNew(true)}>+ Widget</button>
         </div>
+      </div>
+
+      <div className="dash-pages">
+        {dashboards.map(d => (
+          <button
+            key={d.id}
+            className={`range-pill ${activeDashboard?.id === d.id ? 'active' : ''}`}
+            onClick={() => setActiveDashboard(d)}
+          >{d.title}</button>
+        ))}
+        <button className="range-pill add" onClick={createDashboard}>+ Dashboard</button>
       </div>
 
       <div className="dash-toolbar">
@@ -129,7 +187,7 @@ export default function Dashboard() {
         <DeleteConfirm
           message={pendingDelete.message}
           onCancel={() => setPendingDelete(null)}
-          onConfirm={() => deleteWidgetNow(pendingDelete.id)}
+          onConfirm={() => pendingDelete.type === 'dashboard' ? deleteDashboardNow(pendingDelete.id) : deleteWidgetNow(pendingDelete.id)}
         />
       )}
     </div>

@@ -399,6 +399,13 @@ input, button, select, textarea { font-family: inherit; font-size: inherit; colo
   margin-bottom: 20px;
 }
 .dash-toolbar .grow { flex: 1; }
+.dash-pages {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.dash-pages .add { border-style: dashed; }
 
 .range-pills { display: flex; gap: 6px; flex-wrap: wrap; }
 .range-pill {

@@ -12,7 +12,7 @@ import Users from './pages/Users.jsx';
 import LLMKeys from './pages/LLMKeys.jsx';
 
 const NAV = [
-  { to: '/', label: 'Dashboard' },
+  { to: '/', label: 'Dashboards' },
   { to: '/diario', label: 'Diário' },
   { to: '/leads', label: 'Leads' },
   { to: '/landing', label: 'Landing Pages' },
