@@ -5,6 +5,7 @@ import TagSelector, { TagFilter, TagChip } from '../components/TagSelector.jsx';
 import { ensureTagIds, firstSheetRows, num, parseDate, readWorkbook, splitTags, writeTemplate } from '../utils/spreadsheet.js';
 import DeleteConfirm from '../components/DeleteConfirm.jsx';
 import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
+import Pagination from '../components/Pagination.jsx';
 
 export default function Landing() {
   const [pages, setPages] = useState([]);
@@ -18,6 +19,7 @@ export default function Landing() {
   const [pendingDelete, setPendingDelete] = useState(null);
   const [selected, setSelected] = useState([]);
   const [bulkTags, setBulkTags] = useState([]);
+  const [page, setPage] = useState(1);
   const importRef = useRef(null);
 
   async function load() {
@@ -78,6 +80,10 @@ export default function Landing() {
   }
 
   const filtered = tagFilter ? pages.filter(p => (p.tags || []).includes(tagFilter)) : pages;
+  const pageSize = 31;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pageItems = filtered.slice((page - 1) * pageSize, page * pageSize);
+  useEffect(() => { setPage(1); }, [tagFilter]);
 
   function toggleSelected(id) {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -201,8 +207,8 @@ export default function Landing() {
       {filtered.length > 0 && (
         <div className="dash-toolbar">
           <label className="tag-chip">
-            <input type="checkbox" checked={selected.length === filtered.length} onChange={e => setSelected(e.target.checked ? filtered.map(p => p.id) : [])} />
-            Selecionar todas
+            <input type="checkbox" checked={pageItems.length > 0 && pageItems.every(p => selected.includes(p.id))} onChange={e => setSelected(e.target.checked ? [...new Set([...selected, ...pageItems.map(p => p.id)])] : selected.filter(id => !pageItems.some(p => p.id === id)))} />
+            Selecionar página
           </label>
         </div>
       )}
@@ -224,7 +230,7 @@ export default function Landing() {
         </div>
       ) : (
         <div className="grid-2">
-          {filtered.map(p => (
+          {pageItems.map(p => (
             <div key={p.id} className="glass">
               <div className="row-flex" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -286,6 +292,7 @@ export default function Landing() {
               </div>
             </div>
           ))}
+          <Pagination page={page} totalPages={totalPages} onPage={setPage} />
         </div>
       )}
 

@@ -6,6 +6,7 @@ import TagSelector, { TagFilter, TagChip } from '../components/TagSelector.jsx';
 import { ensureTagIds, firstSheetRows, num, parseDate, readWorkbook, splitTags, writeTemplate } from '../utils/spreadsheet.js';
 import DeleteConfirm from '../components/DeleteConfirm.jsx';
 import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
+import Pagination from '../components/Pagination.jsx';
 
 const EMPTY = { date: today(), leads: '', cpl: '', total_spent: '', visits: '', conversion_rate: '', tags: [], notes: '' };
 
@@ -20,7 +21,11 @@ export default function Daily() {
   const [pendingDelete, setPendingDelete] = useState(null);
   const [selected, setSelected] = useState([]);
   const [bulkTags, setBulkTags] = useState([]);
+  const [page, setPage] = useState(1);
   const importRef = useRef(null);
+  const pageSize = 31;
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const pageRows = rows.slice((page - 1) * pageSize, page * pageSize);
 
   async function load() {
     const params = new URLSearchParams({ from: range.from, to: range.to });
@@ -30,6 +35,7 @@ export default function Daily() {
     setTags(t);
   }
   useEffect(() => { load(); }, [range.from, range.to, tagFilter]);
+  useEffect(() => { setPage(1); }, [range.from, range.to, tagFilter]);
 
   function open(row) {
     setEditing(row || null);
@@ -224,11 +230,11 @@ export default function Daily() {
           <table className="table">
             <thead>
               <tr>
-                <th><input type="checkbox" checked={rows.length > 0 && selected.length === rows.length} onChange={e => setSelected(e.target.checked ? rows.map(r => r.id) : [])} /></th><th>Data</th><th>Leads</th><th>CPL</th><th>Gasto</th><th>Visitas</th><th>Conversão</th><th>Tags</th><th></th>
+                <th><input type="checkbox" checked={pageRows.length > 0 && pageRows.every(r => selected.includes(r.id))} onChange={e => setSelected(e.target.checked ? [...new Set([...selected, ...pageRows.map(r => r.id)])] : selected.filter(id => !pageRows.some(r => r.id === id)))} /></th><th>Data</th><th>Leads</th><th>CPL</th><th>Gasto</th><th>Visitas</th><th>Conversão</th><th>Tags</th><th></th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(r => (
+              {pageRows.map(r => (
                 <tr key={r.id}>
                   <td><input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggleSelected(r.id)} /></td>
                   <td>{fmtBR(r.date)}</td>
@@ -254,6 +260,7 @@ export default function Daily() {
             </tbody>
           </table>
         )}
+        <Pagination page={page} totalPages={totalPages} onPage={setPage} />
       </div>
 
       {show && (

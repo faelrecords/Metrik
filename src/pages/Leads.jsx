@@ -6,6 +6,7 @@ import TagSelector, { TagFilter, TagChip } from '../components/TagSelector.jsx';
 import { ensureTagIds, firstSheetRows, num, parseDate, readWorkbook, splitTags, writeTemplate } from '../utils/spreadsheet.js';
 import DeleteConfirm from '../components/DeleteConfirm.jsx';
 import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
+import Pagination from '../components/Pagination.jsx';
 
 const newCampaign = () => ({ name: '', leads: '', cpl: '' });
 
@@ -19,7 +20,11 @@ export default function Leads() {
   const [pendingDelete, setPendingDelete] = useState(null);
   const [selected, setSelected] = useState([]);
   const [bulkTags, setBulkTags] = useState([]);
+  const [page, setPage] = useState(1);
   const importRef = useRef(null);
+  const pageSize = 31;
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const pageRows = rows.slice((page - 1) * pageSize, page * pageSize);
   const [form, setForm] = useState({
     period_start: addDays(today(), -6),
     period_end: today(),
@@ -36,6 +41,7 @@ export default function Leads() {
     setTags(t);
   }
   useEffect(() => { load(); }, [range.from, range.to, tagFilter]);
+  useEffect(() => { setPage(1); }, [range.from, range.to, tagFilter]);
 
   function open(row) {
     setEditing(row || null);
@@ -216,8 +222,8 @@ export default function Leads() {
       {rows.length > 0 && (
         <div className="dash-toolbar">
           <label className="tag-chip">
-            <input type="checkbox" checked={selected.length === rows.length} onChange={e => setSelected(e.target.checked ? rows.map(r => r.id) : [])} />
-            Selecionar todos
+            <input type="checkbox" checked={pageRows.length > 0 && pageRows.every(r => selected.includes(r.id))} onChange={e => setSelected(e.target.checked ? [...new Set([...selected, ...pageRows.map(r => r.id)])] : selected.filter(id => !pageRows.some(r => r.id === id)))} />
+            Selecionar página
           </label>
         </div>
       )}
@@ -239,7 +245,7 @@ export default function Leads() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {rows.map(r => {
+          {pageRows.map(r => {
             const t = totalsOf(r);
             return (
               <div key={r.id} className="glass">
@@ -289,6 +295,7 @@ export default function Leads() {
               </div>
             );
           })}
+          <Pagination page={page} totalPages={totalPages} onPage={setPage} />
         </div>
       )}
 

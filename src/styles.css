@@ -413,6 +413,13 @@ input, button, select, textarea { font-family: inherit; font-size: inherit; colo
   gap: 12px;
   align-items: center;
 }
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+}
 
 .range-pills { display: flex; gap: 6px; flex-wrap: wrap; }
 .range-pill {
