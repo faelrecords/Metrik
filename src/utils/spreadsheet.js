@@ -29,7 +29,18 @@ export function parseDate(value) {
 
 export function num(value) {
   if (value === null || value === undefined || value === '') return 0;
-  const normalized = String(value).replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+  if (typeof value === 'number') return value;
+  const raw = String(value).trim().replace(/[^\d,.-]/g, '');
+  const hasComma = raw.includes(',');
+  const hasDot = raw.includes('.');
+  let normalized = raw;
+  if (hasComma && hasDot) {
+    normalized = raw.lastIndexOf(',') > raw.lastIndexOf('.')
+      ? raw.replace(/\./g, '').replace(',', '.')
+      : raw.replace(/,/g, '');
+  } else if (hasComma) {
+    normalized = raw.replace(',', '.');
+  }
   return Number(normalized) || 0;
 }
 
