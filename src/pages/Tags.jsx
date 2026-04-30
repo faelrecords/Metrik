@@ -8,9 +8,11 @@ const PALETTE = ['#6d71f0', '#8a8ef5', '#c4c6ff', '#30d173', '#ffb84d', '#ff8078
 export default function Tags() {
   const [tags, setTags] = useState([]);
   const [show, setShow] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
   const [editing, setEditing] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [form, setForm] = useState({ name: '', color: PALETTE[0] });
+  const [bulkText, setBulkText] = useState('');
 
   async function load() {
     setTags(await api.get('/tags'));
@@ -32,6 +34,31 @@ export default function Tags() {
     } catch (e) { alert(e.message); }
   }
 
+  async function saveBulk() {
+    const names = bulkText
+      .split(/\r?\n|,/)
+      .map(x => x.trim())
+      .filter(Boolean);
+    const unique = [...new Set(names.map(x => x.toLowerCase()))]
+      .map(lower => names.find(x => x.toLowerCase() === lower));
+    const existing = new Set(tags.map(t => t.name.toLowerCase()));
+    let ok = 0;
+    let fail = 0;
+    for (const name of unique) {
+      if (existing.has(name.toLowerCase())) continue;
+      try {
+        await api.post('/tags', { name, color: PALETTE[ok % PALETTE.length] });
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    setShowBulk(false);
+    setBulkText('');
+    await load();
+    alert(`Tags criadas: ${ok}${fail ? ` · Falhas: ${fail}` : ''}`);
+  }
+
   async function delNow(id) {
     await api.del(`/tags/${id}`);
     setPendingDelete(null);
@@ -50,7 +77,10 @@ export default function Tags() {
           <h1>Tags</h1>
           <div className="subtitle">Organize registros por tags personalizadas</div>
         </div>
-        <button className="btn accent" onClick={() => open(null)}>+ Nova tag</button>
+        <div className="row-flex">
+          <button className="btn" onClick={() => setShowBulk(true)}>+ Tags em massa</button>
+          <button className="btn accent" onClick={() => open(null)}>+ Nova tag</button>
+        </div>
       </div>
 
       <div className="glass">
@@ -96,6 +126,31 @@ export default function Tags() {
             <div className="modal-actions">
               <button className="btn ghost" onClick={() => setShow(false)}>Cancelar</button>
               <button className="btn accent" onClick={save}>Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showBulk && (
+        <div className="modal-backdrop" onClick={() => setShowBulk(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Tags em massa</h2>
+              <button className="modal-close" onClick={() => setShowBulk(false)}>×</button>
+            </div>
+            <div className="field">
+              <label className="label">Nomes</label>
+              <textarea
+                className="textarea"
+                value={bulkText}
+                onChange={e => setBulkText(e.target.value)}
+                placeholder={'Meta Ads\nGoogle Ads\nTikTok Ads'}
+                style={{ minHeight: 180 }}
+              />
+              <div className="hint">Uma por linha ou separadas por vírgula.</div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn ghost" onClick={() => setShowBulk(false)}>Cancelar</button>
+              <button className="btn accent" onClick={saveBulk}>Criar tags</button>
             </div>
           </div>
         </div>
