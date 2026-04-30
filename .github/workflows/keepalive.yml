@@ -1,0 +1,15 @@
+name: Metrik keepalive
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call health endpoint
+        run: |
+          curl --fail --silent --show-error \
+            "https://mvptsjsankxtaccppizm.supabase.co/functions/v1/api/health"
