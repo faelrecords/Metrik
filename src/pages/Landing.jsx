@@ -22,6 +22,7 @@ export default function Landing() {
   const [pendingDelete, setPendingDelete] = useState(null);
   const [selected, setSelected] = useState([]);
   const [bulkTags, setBulkTags] = useState([]);
+  const [activePageId, setActivePageId] = useState(null);
   const [page, setPage] = useState(1);
   const importRef = useRef(null);
 
@@ -29,6 +30,7 @@ export default function Landing() {
     const [p, t] = await Promise.all([api.get('/landing'), api.get('/tags')]);
     setPages(p);
     setTags(t);
+    setActivePageId(current => current && p.find(x => x.id === current) ? current : p[0]?.id || null);
   }
   useEffect(() => { load(); }, []);
 
@@ -95,6 +97,7 @@ export default function Landing() {
   const pageSize = 31;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageItems = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const activePage = filtered.find(p => p.id === activePageId) || filtered[0] || null;
   useEffect(() => { setPage(1); }, [tagFilter, range.from, range.to]);
 
   function toggleSelected(id) {
@@ -244,61 +247,70 @@ export default function Landing() {
           </div>
         </div>
       ) : (
-        <div className="grid-2">
-          {pageItems.map(p => (
-            <div key={p.id} className="glass">
+        <>
+          <div className="dash-pages">
+            {filtered.map(p => (
+              <button
+                key={p.id}
+                className={`range-pill ${activePage?.id === p.id ? 'active' : ''}`}
+                onClick={() => setActivePageId(p.id)}
+              >{p.title}</button>
+            ))}
+          </div>
+          {activePage && (
+            <div className="glass">
               <div className="row-flex" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="row-flex">
-                    <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggleSelected(p.id)} />
-                    <h3 style={{ marginBottom: 4 }}>{p.title}</h3>
+                    <input type="checkbox" checked={selected.includes(activePage.id)} onChange={() => toggleSelected(activePage.id)} />
+                    <h3 style={{ marginBottom: 4 }}>{activePage.title}</h3>
                   </div>
-                  <a href={p.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, wordBreak: 'break-all' }}>{p.url}</a>
+                  <a href={activePage.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, wordBreak: 'break-all' }}>{activePage.url}</a>
                   <div className="row-flex mt-1">
-                    {(p.tags || []).map(id => {
+                    {(activePage.tags || []).map(id => {
                       const t = tags.find(x => x.id === id);
                       return t ? <TagChip key={id} tag={t} /> : null;
                     })}
                   </div>
                 </div>
                 <div className="row-flex">
-                  <button className="btn sm ghost" onClick={() => open(p)}>Editar</button>
-                  <button className="btn sm danger" onClick={() => del(p.id)}>×</button>
+                  <button className="btn sm ghost" onClick={() => open(activePage)}>Editar</button>
+                  <button className="btn sm danger" onClick={() => del(activePage.id)}>×</button>
                 </div>
               </div>
               <div className="grid-3 mt-2">
                 <div className="glass-sm" style={{ textAlign: 'center', padding: 14 }}>
                   <div className="text-tertiary" style={{ fontSize: 11, textTransform: 'uppercase' }}>Visitas</div>
-                  <div style={{ fontSize: 22, fontWeight: 700 }}>{p.totalVisits.toLocaleString('pt-BR')}</div>
+                  <div style={{ fontSize: 22, fontWeight: 700 }}>{activePage.totalVisits.toLocaleString('pt-BR')}</div>
                 </div>
                 <div className="glass-sm" style={{ textAlign: 'center', padding: 14 }}>
                   <div className="text-tertiary" style={{ fontSize: 11, textTransform: 'uppercase' }}>Leads</div>
-                  <div style={{ fontSize: 22, fontWeight: 700 }}>{p.totalLeads.toLocaleString('pt-BR')}</div>
+                  <div style={{ fontSize: 22, fontWeight: 700 }}>{activePage.totalLeads.toLocaleString('pt-BR')}</div>
                 </div>
                 <div className="glass-sm" style={{ textAlign: 'center', padding: 14 }}>
                   <div className="text-tertiary" style={{ fontSize: 11, textTransform: 'uppercase' }}>Conversão</div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent-text)' }}>{Number(p.conversion).toFixed(2)}%</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent-text)' }}>{Number(activePage.conversion).toFixed(2)}%</div>
                 </div>
               </div>
 
               <div className="mt-2">
                 <div className="row-flex" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
                   <strong className="text-secondary" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Registros</strong>
-                  <button className="btn sm" onClick={() => openEntry(p)}>+ Registro</button>
+                  <button className="btn sm" onClick={() => openEntry(activePage)}>+ Registro</button>
                 </div>
-                {p.entries.length === 0 ? (
+                {activePage.entries.length === 0 ? (
                   <div className="text-tertiary" style={{ fontSize: 12, padding: 8 }}>Sem registros ainda.</div>
                 ) : (
                   <table className="table">
                     <thead><tr><th>Período</th><th>Visitas</th><th>Leads</th><th>Conv.</th><th></th></tr></thead>
                     <tbody>
-                      {p.entries.slice().reverse().map(e => (
+                      {activePage.entries.slice().reverse().map(e => (
                         <tr key={e.id}>
                           <td style={{ fontSize: 12 }}>{fmtBR(e.period_start)}→{fmtBR(e.period_end)}</td>
                           <td>{e.visits}</td>
                           <td>{e.leads}</td>
                           <td>{Number(e.conversion).toFixed(2)}%</td>
-                          <td className="actions-cell"><button className="btn sm danger" onClick={() => delEntry(p.id, e.id)}>×</button></td>
+                          <td className="actions-cell"><button className="btn sm danger" onClick={() => delEntry(activePage.id, e.id)}>×</button></td>
                         </tr>
                       ))}
                     </tbody>
@@ -306,9 +318,8 @@ export default function Landing() {
                 )}
               </div>
             </div>
-          ))}
-          <Pagination page={page} totalPages={totalPages} onPage={setPage} />
-        </div>
+          )}
+        </>
       )}
 
       {showNew && (
