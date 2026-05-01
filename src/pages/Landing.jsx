@@ -174,7 +174,8 @@ export default function Landing({ readOnly = false }) {
   async function exportXLS() {
     const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
-    const summary = filtered.map(p => ({
+    const exportPages = activePage ? [activePage] : filtered;
+    const summary = exportPages.map(p => ({
       Título: p.title,
       URL: p.url,
       'Visitas (total)': p.totalVisits,
@@ -183,12 +184,11 @@ export default function Landing({ readOnly = false }) {
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'Resumo');
     const detail = [];
-    filtered.forEach(p => {
+    exportPages.forEach(p => {
       p.entries.forEach(e => {
         detail.push({
           Página: p.title,
-          'Início': fmtBR(e.period_start),
-          'Fim': fmtBR(e.period_end),
+          Data: fmtBR(e.period_start),
           Visitas: e.visits,
           Leads: e.leads,
           'Conversão %': Number(e.conversion).toFixed(2)
@@ -196,7 +196,8 @@ export default function Landing({ readOnly = false }) {
       });
     });
     if (detail.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detail), 'Detalhes');
-    XLSX.writeFile(wb, `landing_pages.xlsx`);
+    const safeName = (activePage?.title || 'landing_pages').replace(/[\\/:*?"<>|]/g, '_');
+    XLSX.writeFile(wb, `${safeName}.xlsx`);
   }
 
   async function exportTemplate() {
