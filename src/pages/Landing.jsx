@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
-import { today, addDays, fmtBR } from '../utils/dates.js';
+import { today, fmtBR } from '../utils/dates.js';
 import { ranges } from '../utils/dates.js';
 import DateRangePicker from '../components/DateRangePicker.jsx';
 import TagSelector, { TagFilter, TagChip } from '../components/TagSelector.jsx';
@@ -18,7 +18,7 @@ export default function Landing({ readOnly = false }) {
   const [editing, setEditing] = useState(null);
   const [entry, setEntry] = useState(null);
   const [form, setForm] = useState({ title: '', url: '', tags: [] });
-  const [entryForm, setEntryForm] = useState({ period_start: addDays(today(), -6), period_end: today(), visits: '', leads: '' });
+  const [entryForm, setEntryForm] = useState({ date: today(), visits: '', leads: '' });
   const [pendingDelete, setPendingDelete] = useState(null);
   const [selected, setSelected] = useState([]);
   const [bulkTags, setBulkTags] = useState([]);
@@ -70,12 +70,17 @@ export default function Landing({ readOnly = false }) {
 
   function openEntry(p) {
     setEntry(p);
-    setEntryForm({ period_start: addDays(today(), -6), period_end: today(), visits: '', leads: '' });
+    setEntryForm({ date: today(), visits: '', leads: '' });
   }
 
   async function saveEntry() {
     try {
-      await api.post(`/landing/${entry.id}/entries`, entryForm);
+      await api.post(`/landing/${entry.id}/entries`, {
+        period_start: entryForm.date,
+        period_end: entryForm.date,
+        visits: entryForm.visits,
+        leads: entryForm.leads
+      });
       setEntry(null);
       load();
     } catch (e) { alert(e.message); }
@@ -395,15 +400,9 @@ export default function Landing({ readOnly = false }) {
               <h2>Novo registro · {entry.title}</h2>
               <button className="modal-close" onClick={() => setEntry(null)}>×</button>
             </div>
-            <div className="grid-2">
-              <div className="field">
-                <label className="label">Início</label>
-                <input className="input" type="date" value={entryForm.period_start} onChange={e => setEntryForm({ ...entryForm, period_start: e.target.value })} />
-              </div>
-              <div className="field">
-                <label className="label">Fim</label>
-                <input className="input" type="date" value={entryForm.period_end} onChange={e => setEntryForm({ ...entryForm, period_end: e.target.value })} />
-              </div>
+            <div className="field">
+              <label className="label">Data</label>
+              <input className="input" type="date" value={entryForm.date} onChange={e => setEntryForm({ ...entryForm, date: e.target.value })} />
             </div>
             <div className="grid-2">
               <div className="field">
