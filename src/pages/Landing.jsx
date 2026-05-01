@@ -203,8 +203,7 @@ export default function Landing({ readOnly = false }) {
     await writeTemplate('template_landing_pages.xlsx', 'Landing pages', [{
       Título: 'Landing principal',
       URL: 'https://exemplo.com/landing',
-      'Início': addDays(today(), -6),
-      Fim: today(),
+      Data: today(),
       Visitas: 1000,
       Leads: 100,
       Tags: 'Landing',
@@ -212,7 +211,7 @@ export default function Landing({ readOnly = false }) {
     }]);
   }
 
-  async function importXLS(file) {
+  async function importXLS(file, targetPage = null) {
     if (!file) return;
     try {
       const { XLSX, workbook } = await readWorkbook(file);
@@ -221,13 +220,14 @@ export default function Landing({ readOnly = false }) {
       let ok = 0;
       let fail = 0;
       for (const row of data) {
-        const title = String(row.Título || row.Titulo || row.Página || row.Pagina || '').trim();
-        const url = String(row.URL || '').trim();
-        const period_start = parseDate(row['Início'] || row.Inicio);
-        const period_end = parseDate(row.Fim);
-        if (!title || !url || !period_start || !period_end) { fail++; continue; }
+        const title = String(row.Título || row.Titulo || row.Página || row.Pagina || targetPage?.title || '').trim();
+        const url = String(row.URL || targetPage?.url || '').trim();
+        const date = parseDate(row.Data || row['Início'] || row.Inicio);
+        const period_start = date;
+        const period_end = parseDate(row.Fim) || date;
+        if (!title || !url || !period_start) { fail++; continue; }
         try {
-          let page = pageMap.get(`${title}|${url}`);
+          let page = targetPage || pageMap.get(`${title}|${url}`);
           if (!page) {
             page = await api.post('/landing', {
               title,
@@ -266,7 +266,6 @@ export default function Landing({ readOnly = false }) {
         <div className="row-flex">
           <button className="btn" onClick={() => setFiltersOpen(true)}>Filtros</button>
           {!readOnly && <button className="btn" onClick={exportTemplate}>Template</button>}
-          {!readOnly && <button className="btn" onClick={() => importRef.current?.click()}>Importar</button>}
           {!readOnly && <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => importXLS(e.target.files?.[0])} />}
           <button className="btn" onClick={exportXLS}>↓ Excel</button>
           {!readOnly && <button className="btn accent" onClick={() => open(null)}>+ Nova landing</button>}
@@ -340,7 +339,12 @@ export default function Landing({ readOnly = false }) {
               <div className="mt-2">
                 <div className="row-flex" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
                   <strong className="text-secondary" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Registros</strong>
-                  {!readOnly && <button className="btn sm" onClick={() => openEntry(activePage)}>+ Registro</button>}
+                  {!readOnly && (
+                    <div className="row-flex">
+                      <button className="btn sm" onClick={() => importRef.current?.click()}>Importar</button>
+                      <button className="btn sm" onClick={() => openEntry(activePage)}>+ Registro</button>
+                    </div>
+                  )}
                 </div>
                 {activePage.entries.length === 0 ? (
                   <div className="text-tertiary" style={{ fontSize: 12, padding: 8 }}>Sem registros ainda.</div>
