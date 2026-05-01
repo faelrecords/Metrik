@@ -175,40 +175,26 @@ export default function Landing({ readOnly = false }) {
     const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
     const exportPages = activePage ? [activePage] : filtered;
-    const summary = exportPages.map(p => ({
-      Título: p.title,
-      URL: p.url,
-      'Visitas (total)': p.totalVisits,
-      'Leads (total)': p.totalLeads,
-      'Conversão %': Number(p.conversion).toFixed(2)
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'Resumo');
-    const detail = [];
+    const rows = [];
     exportPages.forEach(p => {
       p.entries.forEach(e => {
-        detail.push({
-          Página: p.title,
+        rows.push({
           Data: fmtBR(e.period_start),
           Visitas: e.visits,
-          Leads: e.leads,
-          'Conversão %': Number(e.conversion).toFixed(2)
+          Leads: e.leads
         });
       });
     });
-    if (detail.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detail), 'Detalhes');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Registros');
     const safeName = (activePage?.title || 'landing_pages').replace(/[\\/:*?"<>|]/g, '_');
     XLSX.writeFile(wb, `${safeName}.xlsx`);
   }
 
   async function exportTemplate() {
     await writeTemplate('template_landing_pages.xlsx', 'Landing pages', [{
-      Título: 'Landing principal',
-      URL: 'https://exemplo.com/landing',
       Data: today(),
       Visitas: 1000,
-      Leads: 100,
-      Tags: 'Landing',
-      Notas: 'Opcional'
+      Leads: 100
     }]);
   }
 
