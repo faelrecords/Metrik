@@ -323,7 +323,7 @@ input, button, select, textarea { font-family: inherit; font-size: inherit; colo
 }
 .sheet-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 36px;
+  grid-template-columns: 2fr 1fr 1fr 1fr 36px;
   gap: 0;
 }
 .sheet-row.header > div {
@@ -720,7 +720,7 @@ select.input option, select.select option { background: var(--bg-elevated); colo
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
   .widget.size-1, .widget.size-2, .widget.size-3, .widget.size-4, .widget.size-6, .widget.size-8 { grid-column: span 12; }
   .modal { padding: 22px; border-radius: 20px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }
-  .sheet-row { grid-template-columns: 1.5fr 1fr 1fr 32px; }
+  .sheet-row { grid-template-columns: 1.5fr 1fr 1fr 1fr 32px; }
   .login-brand { font-size: 44px; letter-spacing: -1px; }
   .chat-msg { max-width: 95%; }
 }

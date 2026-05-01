@@ -62,7 +62,7 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
       const arr = [];
       for (const r of dataLeads) {
         for (const c of r.campaigns || []) {
-          arr.push({ name: c.name, leads: c.leads, cpl: c.cpl, period: r.period_start });
+          arr.push({ name: c.name, leads: c.leads, cpl: c.cpl, total_spent: c.total_spent || ((Number(c.leads) || 0) * (Number(c.cpl) || 0)), period: r.period_start });
         }
       }
       return arr;

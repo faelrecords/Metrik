@@ -16,6 +16,7 @@ const FIELDS = {
   ],
   leads: [
     { v: 'leads', label: 'Quantidade de leads' },
+    { v: 'total_spent', label: 'Gasto total' },
     { v: 'cpl', label: 'CPL' }
   ],
   landing: [

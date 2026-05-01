@@ -8,7 +8,7 @@ import DeleteConfirm from '../components/DeleteConfirm.jsx';
 import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
 import Pagination from '../components/Pagination.jsx';
 
-const newCampaign = () => ({ name: '', leads: '', cpl: '' });
+const newCampaign = () => ({ name: '', leads: '', total_spent: '', cpl: '' });
 
 export default function Leads({ readOnly = false }) {
   const [range, setRange] = useState({ ...ranges['30d'](), preset: '30d' });
@@ -29,8 +29,7 @@ export default function Leads({ readOnly = false }) {
   const [form, setForm] = useState({
     date: today(),
     campaigns: [newCampaign()],
-    tags: [],
-    notes: ''
+    tags: []
   });
 
   async function load() {
@@ -48,8 +47,7 @@ export default function Leads({ readOnly = false }) {
     setForm(row ? { ...row, date: row.period_start, campaigns: row.campaigns.length ? row.campaigns : [newCampaign()] } : {
       date: today(),
       campaigns: [newCampaign()],
-      tags: [],
-      notes: ''
+      tags: []
     });
     setShow(true);
   }
@@ -76,7 +74,8 @@ export default function Leads({ readOnly = false }) {
       campaigns: form.campaigns.filter(c => c.name).map(c => ({
         name: c.name,
         leads: Number(c.leads) || 0,
-        cpl: Number(c.cpl) || 0
+        total_spent: Number(c.total_spent) || 0,
+        cpl: Number(c.cpl) || ((Number(c.total_spent) || 0) && Number(c.leads) ? (Number(c.total_spent) / Number(c.leads)) : 0)
       }))
     };
     try {
@@ -116,7 +115,7 @@ export default function Leads({ readOnly = false }) {
 
   function totalsOf(r) {
     const totalLeads = r.campaigns.reduce((s, c) => s + (c.leads || 0), 0);
-    const totalCost = r.campaigns.reduce((s, c) => s + (c.leads || 0) * (c.cpl || 0), 0);
+    const totalCost = r.campaigns.reduce((s, c) => s + (Number(c.total_spent) || (c.leads || 0) * (c.cpl || 0)), 0);
     const avgCpl = totalLeads > 0 ? totalCost / totalLeads : 0;
     return { totalLeads, totalCost, avgCpl };
   }
@@ -130,8 +129,8 @@ export default function Leads({ readOnly = false }) {
           Data: fmtBR(r.period_start),
           Campanha: c.name,
           Leads: c.leads,
+          'Total gasto': Number(c.total_spent) || (c.leads || 0) * (c.cpl || 0),
           CPL: c.cpl,
-          'Custo total': (c.leads || 0) * (c.cpl || 0)
         });
       });
     });
@@ -146,9 +145,9 @@ export default function Leads({ readOnly = false }) {
       Data: today(),
       Campanha: 'Meta Ads - Conversão',
       Leads: 100,
+      'Total gasto': 1250,
       CPL: 12.5,
-      Tags: 'Campanha',
-      Notas: 'Opcional'
+      Tags: 'Campanha'
     }]);
   }
 
@@ -164,17 +163,19 @@ export default function Leads({ readOnly = false }) {
         const period_end = parseDate(row.Fim || row.period_end) || date;
         const name = String(row.Campanha || row.Anuncio || row.Anúncio || '').trim();
         if (!period_start || !name) continue;
-        const key = `${period_start}|${period_end}|${row.Tags || ''}|${row.Notas || ''}`;
+        const key = `${period_start}|${period_end}|${row.Tags || ''}`;
         if (!groups.has(key)) {
           groups.set(key, {
             period_start,
             period_end,
             tags: splitTags(row.Tags),
-            notes: row.Notas || '',
             campaigns: []
           });
         }
-        groups.get(key).campaigns.push({ name, leads: num(row.Leads), cpl: num(row.CPL) });
+        const leads = num(row.Leads);
+        const totalSpent = num(row['Total gasto'] || row.Gasto || row.Custo);
+        const cpl = num(row.CPL) || (totalSpent && leads ? totalSpent / leads : 0);
+        groups.get(key).campaigns.push({ name, leads, total_spent: totalSpent, cpl });
       }
       let ok = 0;
       let fail = 0;
@@ -266,20 +267,19 @@ export default function Leads({ readOnly = false }) {
                 </div>
                 <table className="table">
                   <thead>
-                    <tr><th>Campanha</th><th>Leads</th><th>CPL</th><th>Custo</th></tr>
+                    <tr><th>Campanha</th><th>Leads</th><th>Total gasto</th><th>CPL</th></tr>
                   </thead>
                   <tbody>
                     {r.campaigns.map((c, i) => (
                       <tr key={i}>
                         <td>{c.name}</td>
                         <td>{c.leads}</td>
+                        <td>R$ {(Number(c.total_spent) || (Number(c.leads) * Number(c.cpl))).toFixed(2)}</td>
                         <td>R$ {Number(c.cpl).toFixed(2)}</td>
-                        <td>R$ {(Number(c.leads) * Number(c.cpl)).toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                {r.notes && <div className="mt-2 text-tertiary" style={{ fontSize: 12 }}>{r.notes}</div>}
               </div>
             );
           })}
@@ -305,6 +305,7 @@ export default function Leads({ readOnly = false }) {
                 <div className="sheet-row header">
                   <div>Nome da campanha</div>
                   <div>Leads</div>
+                  <div>Total gasto (R$)</div>
                   <div>CPL (R$)</div>
                   <div></div>
                 </div>
@@ -312,6 +313,7 @@ export default function Leads({ readOnly = false }) {
                   <div className="sheet-row" key={i}>
                     <input value={c.name} onChange={e => setCampaign(i, 'name', e.target.value)} placeholder="Ex: Meta Ads — Conversão" />
                     <input type="number" value={c.leads} onChange={e => setCampaign(i, 'leads', e.target.value)} />
+                    <input type="number" step="0.01" value={c.total_spent || ''} onChange={e => setCampaign(i, 'total_spent', e.target.value)} />
                     <input type="number" step="0.01" value={c.cpl} onChange={e => setCampaign(i, 'cpl', e.target.value)} />
                     <div className="row-action">
                       <button onClick={() => removeRow(i)} title="Remover">×</button>
@@ -325,10 +327,6 @@ export default function Leads({ readOnly = false }) {
             <div className="field">
               <label className="label">Tags</label>
               <TagSelector value={form.tags} onChange={v => setForm({ ...form, tags: v })} />
-            </div>
-            <div className="field">
-              <label className="label">Notas</label>
-              <textarea className="textarea" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
             </div>
             <div className="modal-actions">
               <button className="btn ghost" onClick={() => setShow(false)}>Cancelar</button>
