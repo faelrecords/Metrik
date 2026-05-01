@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
-import { today, addDays, ranges, fmtBR } from '../utils/dates.js';
+import { today, ranges, fmtBR } from '../utils/dates.js';
 import DateRangePicker from '../components/DateRangePicker.jsx';
 import TagSelector, { TagFilter, TagChip } from '../components/TagSelector.jsx';
 import { ensureTagIds, firstSheetRows, num, parseDate, readWorkbook, splitTags, writeTemplate } from '../utils/spreadsheet.js';
@@ -27,8 +27,7 @@ export default function Leads({ readOnly = false }) {
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
   const pageRows = rows.slice((page - 1) * pageSize, page * pageSize);
   const [form, setForm] = useState({
-    period_start: addDays(today(), -6),
-    period_end: today(),
+    date: today(),
     campaigns: [newCampaign()],
     tags: [],
     notes: ''
@@ -46,9 +45,8 @@ export default function Leads({ readOnly = false }) {
 
   function open(row) {
     setEditing(row || null);
-    setForm(row ? { ...row, campaigns: row.campaigns.length ? row.campaigns : [newCampaign()] } : {
-      period_start: addDays(today(), -6),
-      period_end: today(),
+    setForm(row ? { ...row, date: row.period_start, campaigns: row.campaigns.length ? row.campaigns : [newCampaign()] } : {
+      date: today(),
       campaigns: [newCampaign()],
       tags: [],
       notes: ''
@@ -73,6 +71,8 @@ export default function Leads({ readOnly = false }) {
   async function save() {
     const f = {
       ...form,
+      period_start: form.date,
+      period_end: form.date,
       campaigns: form.campaigns.filter(c => c.name).map(c => ({
         name: c.name,
         leads: Number(c.leads) || 0,
@@ -127,7 +127,7 @@ export default function Leads({ readOnly = false }) {
     rows.forEach(r => {
       r.campaigns.forEach(c => {
         flat.push({
-          Período: `${fmtBR(r.period_start)} → ${fmtBR(r.period_end)}`,
+          Data: fmtBR(r.period_start),
           Campanha: c.name,
           Leads: c.leads,
           CPL: c.cpl,
@@ -143,8 +143,7 @@ export default function Leads({ readOnly = false }) {
 
   async function exportTemplate() {
     await writeTemplate('template_volume_leads.xlsx', 'Volume de leads', [{
-      'Início': addDays(today(), -6),
-      'Fim': today(),
+      Data: today(),
       Campanha: 'Meta Ads - Conversão',
       Leads: 100,
       CPL: 12.5,
@@ -160,10 +159,11 @@ export default function Leads({ readOnly = false }) {
       const data = firstSheetRows(XLSX, workbook);
       const groups = new Map();
       for (const row of data) {
-        const period_start = parseDate(row['Início'] || row.Inicio || row.period_start);
-        const period_end = parseDate(row.Fim || row.period_end);
+        const date = parseDate(row.Data || row['Início'] || row.Inicio || row.period_start);
+        const period_start = date;
+        const period_end = parseDate(row.Fim || row.period_end) || date;
         const name = String(row.Campanha || row.Anuncio || row.Anúncio || '').trim();
-        if (!period_start || !period_end || !name) continue;
+        if (!period_start || !name) continue;
         const key = `${period_start}|${period_end}|${row.Tags || ''}|${row.Notas || ''}`;
         if (!groups.has(key)) {
           groups.set(key, {
@@ -241,7 +241,7 @@ export default function Leads({ readOnly = false }) {
                   <div>
                     <div className="row-flex">
                       {!readOnly && <input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggleSelected(r.id)} />}
-                      <h3 style={{ marginBottom: 4 }}>{fmtBR(r.period_start)} → {fmtBR(r.period_end)}</h3>
+                      <h3 style={{ marginBottom: 4 }}>{fmtBR(r.period_start)}</h3>
                     </div>
                     <div className="row-flex">
                       {(r.tags || []).map(id => {
@@ -294,15 +294,9 @@ export default function Leads({ readOnly = false }) {
               <h2>{editing ? 'Editar relatório' : 'Novo relatório'}</h2>
               <button className="modal-close" onClick={() => setShow(false)}>×</button>
             </div>
-            <div className="grid-2">
-              <div className="field">
-                <label className="label">Início do período</label>
-                <input className="input" type="date" value={form.period_start} onChange={e => setForm({ ...form, period_start: e.target.value })} />
-              </div>
-              <div className="field">
-                <label className="label">Fim do período</label>
-                <input className="input" type="date" value={form.period_end} onChange={e => setForm({ ...form, period_end: e.target.value })} />
-              </div>
+            <div className="field">
+              <label className="label">Data</label>
+              <input className="input" type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
             </div>
 
             <div className="field">
