@@ -23,6 +23,8 @@ export default function Dashboard({ user }) {
   const [showNew, setShowNew] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [dashModal, setDashModal] = useState(null); // { mode: 'create' | 'duplicate' }
+  const [dashModalName, setDashModalName] = useState('');
   const dashRef = useRef(null);
 
   async function loadDashboards() {
@@ -56,7 +58,11 @@ export default function Dashboard({ user }) {
   useEffect(() => { if (activeDashboard) loadData(); }, [range.from, range.to, tagFilter, activeDashboard?.id]);
 
   async function createDashboard() {
-    const title = prompt('Nome do dashboard?') || 'Novo dashboard';
+    setDashModalName('Novo dashboard');
+    setDashModal({ mode: 'create' });
+  }
+
+  async function createDashboardNow(title) {
     const dash = await api.post('/dashboards', { title });
     const list = await loadDashboards();
     setDashboards(list);
@@ -65,8 +71,11 @@ export default function Dashboard({ user }) {
 
   async function renameDashboard() {
     if (!activeDashboard) return;
-    const title = prompt('Novo nome?', activeDashboard.title);
-    if (!title) return;
+    setDashModalName(activeDashboard.title);
+    setDashModal({ mode: 'rename' });
+  }
+
+  async function renameDashboardNow(title) {
     const updated = await api.put(`/dashboards/${activeDashboard.id}`, { title });
     setActiveDashboard(updated);
     loadDashboards();
@@ -74,7 +83,12 @@ export default function Dashboard({ user }) {
 
   async function duplicateDashboard() {
     if (!activeDashboard) return;
-    const newDash = await api.post('/dashboards', { title: `${activeDashboard.title} (cópia)` });
+    setDashModalName(`${activeDashboard.title} (cópia)`);
+    setDashModal({ mode: 'duplicate' });
+  }
+
+  async function duplicateDashboardNow(title) {
+    const newDash = await api.post('/dashboards', { title });
     for (const w of widgets) {
       const { id, dashboard_id, user_id, created_at, position, ...rest } = w;
       await api.post('/widgets', { ...rest, dashboard_id: newDash.id });
@@ -118,6 +132,15 @@ export default function Dashboard({ user }) {
   function deleteWidget(id) {
     if (canSkipDeleteConfirm()) deleteWidgetNow(id);
     else setPendingDelete({ type: 'widget', id, message: 'Remover widget?' });
+  }
+
+  async function confirmDashModal() {
+    const name = dashModalName.trim() || 'Novo dashboard';
+    const mode = dashModal.mode;
+    setDashModal(null);
+    if (mode === 'create') await createDashboardNow(name);
+    else if (mode === 'rename') await renameDashboardNow(name);
+    else if (mode === 'duplicate') await duplicateDashboardNow(name);
   }
 
   async function exportPDF() {
@@ -202,6 +225,32 @@ export default function Dashboard({ user }) {
           onCancel={() => setPendingDelete(null)}
           onConfirm={() => pendingDelete.type === 'dashboard' ? deleteDashboardNow(pendingDelete.id) : deleteWidgetNow(pendingDelete.id)}
         />
+      )}
+      {dashModal && (
+        <div className="modal-backdrop" onClick={() => setDashModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>
+                {dashModal.mode === 'create' ? 'Novo dashboard' : dashModal.mode === 'rename' ? 'Renomear dashboard' : 'Duplicar dashboard'}
+              </h2>
+              <button className="modal-close" onClick={() => setDashModal(null)}>×</button>
+            </div>
+            <div className="field">
+              <label className="label">Nome</label>
+              <input
+                className="input"
+                value={dashModalName}
+                onChange={e => setDashModalName(e.target.value)}
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter') confirmDashModal(); if (e.key === 'Escape') setDashModal(null); }}
+              />
+            </div>
+            <div className="modal-actions">
+              <button className="btn ghost" onClick={() => setDashModal(null)}>Cancelar</button>
+              <button className="btn accent" onClick={confirmDashModal}>Salvar</button>
+            </div>
+          </div>
+        </div>
       )}
       {filtersOpen && (
         <div className="drawer-backdrop" onClick={() => setFiltersOpen(false)}>
