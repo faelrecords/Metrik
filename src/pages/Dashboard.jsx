@@ -72,6 +72,17 @@ export default function Dashboard({ user }) {
     loadDashboards();
   }
 
+  async function duplicateDashboard() {
+    if (!activeDashboard) return;
+    const newDash = await api.post('/dashboards', { title: `${activeDashboard.title} (cópia)` });
+    for (const w of widgets) {
+      const { id, dashboard_id, user_id, created_at, position, ...rest } = w;
+      await api.post('/widgets', { ...rest, dashboard_id: newDash.id });
+    }
+    const list = await loadDashboards();
+    setActiveDashboard(list.find(d => d.id === newDash.id) || newDash);
+  }
+
   async function deleteDashboardNow(id) {
     await api.del(`/dashboards/${id}`);
     setPendingDelete(null);
@@ -132,8 +143,10 @@ export default function Dashboard({ user }) {
         <div className="row-flex">
           <button className="btn" onClick={() => setFiltersOpen(true)}>Filtros</button>
           {!readOnly && <button className="btn" onClick={renameDashboard} disabled={!activeDashboard}>Renomear</button>}
+          {!readOnly && <button className="btn" onClick={duplicateDashboard} disabled={!activeDashboard}>Duplicar</button>}
           {!readOnly && <button className="btn danger" onClick={deleteDashboard} disabled={dashboards.length <= 1}>Excluir página</button>}
           <button className="btn" onClick={exportPDF}>↓ PDF</button>
+          {!readOnly && <button className="btn" onClick={createDashboard}>+ Tab</button>}
           {!readOnly && <button className="btn accent" onClick={() => setShowNew(true)}>+ Widget</button>}
         </div>
       </div>
@@ -146,7 +159,6 @@ export default function Dashboard({ user }) {
             onClick={() => setActiveDashboard(d)}
           >{d.title}</button>
         ))}
-        {!readOnly && <button className="range-pill add" onClick={createDashboard}>NewTab</button>}
       </div>
 
       <div ref={dashRef}>
