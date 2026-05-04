@@ -1,143 +1,108 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
-import DeleteConfirm from '../components/DeleteConfirm.jsx';
-import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
 
-export default function Chat() {
-  const [sessions, setSessions] = useState([]);
-  const [active, setActive] = useState(null);
+function fmtTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+export default function Chat({ user }) {
   const [messages, setMessages] = useState([]);
-  const [keys, setKeys] = useState([]);
-  const [keyId, setKeyId] = useState(null);
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState(null);
+  const [sending, setSending] = useState(false);
   const msgRef = useRef(null);
+  const pollRef = useRef(null);
 
-  async function loadSessions() {
-    const [s, k] = await Promise.all([api.get('/chat/sessions'), api.get('/llm/keys')]);
-    setSessions(s);
-    setKeys(k);
-    if (k.length && !keyId) setKeyId(k[0].id);
-  }
-  useEffect(() => { loadSessions(); }, []);
-
-  async function loadMessages(sid) {
-    const m = await api.get(`/chat/sessions/${sid}/messages`);
-    setMessages(m);
-    setTimeout(() => { if (msgRef.current) msgRef.current.scrollTop = msgRef.current.scrollHeight; }, 50);
+  async function load() {
+    try {
+      const m = await api.get('/team_messages?limit=200');
+      setMessages(m);
+      setTimeout(() => { if (msgRef.current) msgRef.current.scrollTop = msgRef.current.scrollHeight; }, 30);
+    } catch { /* silent */ }
   }
 
-  async function pickSession(s) {
-    setActive(s);
-    if (s.key_id) setKeyId(s.key_id);
-    await loadMessages(s.id);
-  }
-
-  async function newSession() {
-    const s = await api.post('/chat/sessions', { key_id: keyId });
-    await loadSessions();
-    setActive(s);
-    setMessages([]);
-  }
-
-  async function delSessionNow(s) {
-    await api.del(`/chat/sessions/${s.id}`);
-    setPendingDelete(null);
-    if (active?.id === s.id) { setActive(null); setMessages([]); }
-    loadSessions();
-  }
-
-  function delSession(s) {
-    if (canSkipDeleteConfirm()) delSessionNow(s);
-    else setPendingDelete({ item: s, message: 'Apagar conversa?' });
-  }
+  useEffect(() => {
+    load();
+    pollRef.current = setInterval(load, 5000);
+    return () => clearInterval(pollRef.current);
+  }, []);
 
   async function send() {
-    if (!input.trim()) return;
-    if (keys.length === 0) { alert('Adicione uma chave de LLM em "LLMs" primeiro.'); return; }
-    let s = active;
-    if (!s) {
-      s = await api.post('/chat/sessions', { key_id: keyId });
-      setActive(s);
-      await loadSessions();
-    }
-    const text = input;
+    const text = input.trim();
+    if (!text) return;
     setInput('');
-    setLoading(true);
-    setMessages([...messages, { id: 'temp_u', role: 'user', content: text }, { id: 'temp_a', role: 'assistant', content: '...' }]);
+    setSending(true);
     try {
-      await api.post(`/chat/sessions/${s.id}/messages`, { content: text, key_id: keyId });
-      await loadMessages(s.id);
-      loadSessions();
-    } catch (e) {
-      alert(e.message);
-      setMessages(prev => prev.filter(m => m.id !== 'temp_a'));
-    } finally { setLoading(false); }
+      await api.post('/team_messages', { text });
+      await load();
+    } catch (e) { alert(e.message); setInput(text); }
+    finally { setSending(false); }
+  }
+
+  async function del(id) {
+    await api.del(`/team_messages/${id}`);
+    setMessages(prev => prev.filter(m => m.id !== id));
   }
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)' }}>
       <div className="page-header">
         <div>
-          <h1>IA · Insights</h1>
-          <div className="subtitle">Converse com IA usando os dados do sistema como contexto</div>
-        </div>
-        <div className="row-flex">
-          {keys.length > 0 && (
-            <select className="select" style={{ width: 'auto' }} value={keyId || ''} onChange={e => setKeyId(Number(e.target.value))}>
-              {keys.map(k => <option key={k.id} value={k.id}>{k.label}</option>)}
-            </select>
-          )}
-          <button className="btn accent" onClick={newSession}>+ Nova conversa</button>
+          <h1>Chat interno</h1>
+          <div className="subtitle">Mensagens visíveis para toda a equipe</div>
         </div>
       </div>
 
-      <div className="chat-layout">
-        <div className="glass chat-sidebar">
-          {sessions.length === 0 && <div className="text-tertiary" style={{ fontSize: 12 }}>Sem conversas.</div>}
-          {sessions.map(s => (
-            <div key={s.id} className={`session-item ${active?.id === s.id ? 'active' : ''}`} onClick={() => pickSession(s)}>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</span>
-              <button className="sx" onClick={(e) => { e.stopPropagation(); delSession(s); }}>×</button>
+      <div className="glass" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 }}>
+        <div ref={msgRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {messages.length === 0 && (
+            <div className="empty-state" style={{ padding: 32 }}>
+              <h3>Nenhuma mensagem ainda</h3>
+              <p>Seja o primeiro a enviar uma mensagem para a equipe.</p>
             </div>
-          ))}
+          )}
+          {messages.map((m, i) => {
+            const isMe = m.user_id === user?.id;
+            const prevSameSender = i > 0 && messages[i - 1].user_id === m.user_id;
+            return (
+              <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', marginTop: prevSameSender ? 2 : 12 }}>
+                {!prevSameSender && (
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 3, paddingLeft: isMe ? 0 : 4, paddingRight: isMe ? 4 : 0 }}>
+                    {isMe ? 'Você' : m.user_name} · {fmtTime(m.created_at)}
+                  </div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, flexDirection: isMe ? 'row-reverse' : 'row' }}>
+                  <div style={{
+                    maxWidth: 520, padding: '8px 14px', borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                    background: isMe ? '#6d71f0' : 'rgba(255,255,255,0.07)',
+                    color: '#e8e7ec', fontSize: 14, lineHeight: 1.5, wordBreak: 'break-word'
+                  }}>
+                    {m.text}
+                  </div>
+                  {isMe && (
+                    <button onClick={() => del(m.id)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.2)', cursor: 'pointer', fontSize: 14, padding: '0 2px', lineHeight: 1 }} title="Apagar">×</button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        <div className="glass chat-main">
-          <div className="chat-messages" ref={msgRef}>
-            {messages.length === 0 && (
-              <div className="empty-state" style={{ padding: 32 }}>
-                <h3>Pergunte algo sobre seus dados</h3>
-                <p>Ex: "qual campanha trouxe mais leads?", "qual landing tem maior conversão?", "compare os últimos 7 dias com a semana anterior"</p>
-              </div>
-            )}
-            {messages.map(m => (
-              <div key={m.id} className={`chat-msg ${m.role}`}>{m.content}</div>
-            ))}
-          </div>
-          <div className="chat-input-row">
-            <textarea
-              className="textarea"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-              placeholder={keys.length === 0 ? 'Adicione uma chave em LLMs primeiro...' : 'Pergunte algo...'}
-              disabled={loading || keys.length === 0}
-            />
-            <button className="btn accent" onClick={send} disabled={loading || keys.length === 0}>
-              {loading ? '...' : 'Enviar'}
-            </button>
-          </div>
+        <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: 10 }}>
+          <textarea
+            className="textarea"
+            style={{ flex: 1, minHeight: 44, maxHeight: 120, resize: 'vertical' }}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+            placeholder="Mensagem... (Enter para enviar, Shift+Enter nova linha)"
+            disabled={sending}
+          />
+          <button className="btn accent" onClick={send} disabled={sending || !input.trim()} style={{ alignSelf: 'flex-end' }}>
+            {sending ? '...' : 'Enviar'}
+          </button>
         </div>
       </div>
-      {pendingDelete && (
-        <DeleteConfirm
-          message={pendingDelete.message}
-          onCancel={() => setPendingDelete(null)}
-          onConfirm={() => delSessionNow(pendingDelete.item)}
-        />
-      )}
     </div>
   );
 }

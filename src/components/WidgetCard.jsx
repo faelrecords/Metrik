@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area,
-  PieChart, Pie, Cell, XAxis, YAxis, Tooltip, CartesianGrid
+  PieChart, Pie, Cell, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine
 } from 'recharts';
 import { fmtBRShort } from '../utils/dates.js';
 
@@ -115,7 +115,10 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
     return (
       <div className={`widget size-${widget.size || 3}`}>
         <div className="widget-head">
-          <div className="widget-title">{widget.title}</div>
+          <div className="widget-title">
+            {widget.title}
+            {widget.campaign_filter && <span className="text-tertiary" style={{ fontSize: 11, marginLeft: 6 }}>· {widget.campaign_filter}</span>}
+          </div>
           {actions}
         </div>
         <div className="widget-kpi">
@@ -124,7 +127,6 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
           </div>
           <div className="label">
             {widget.aggregation === 'avg' ? 'Média' : widget.aggregation === 'sum' ? 'Total' : widget.aggregation} de {FIELD_LABELS[widget.field] || widget.field}
-            {widget.campaign_filter ? ` · ${widget.campaign_filter}` : ''}
           </div>
           {goal != null && !dataHidden && (
             <div style={{ marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,0.35)', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -197,36 +199,57 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
               <XAxis dataKey="name" stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
               <YAxis stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
               {!dataHidden && <Tooltip contentStyle={TOOLTIP_STYLE} />}
-              <Bar dataKey="value" fill={widget.color} radius={[6, 6, 0, 0]} minPointSize={1} />
+              {widget.dynamic_color && widget.goal_value != null && widget.goal_value !== '' && (
+                <ReferenceLine y={Number(widget.goal_value)} stroke={widget.color_on || '#ffb84d'} strokeDasharray="4 3" />
+              )}
+              <Bar dataKey="value" radius={[6, 6, 0, 0]} minPointSize={1}>
+                {chartData.map((entry, i) => (
+                  <Cell key={i} fill={kpiColor(entry.value, widget)} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
-        ) : widget.chart_type === 'area' ? (
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id={`g${widget.id}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={widget.color} stopOpacity={0.5} />
-                  <stop offset="100%" stopColor={widget.color} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="name" stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
-              <YAxis stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
-              {!dataHidden && <Tooltip contentStyle={TOOLTIP_STYLE} />}
-              <Area type="monotone" dataKey="value" stroke={widget.color} fill={`url(#g${widget.id})`} strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        ) : (
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="name" stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
-              <YAxis stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
-              {!dataHidden && <Tooltip contentStyle={TOOLTIP_STYLE} />}
-              <Line type="monotone" dataKey="value" stroke={widget.color} strokeWidth={2} dot={{ fill: widget.color, r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
+        ) : widget.chart_type === 'area' ? (() => {
+          const avgVal = aggregateValue(filtered, widget.field, 'avg');
+          const lineColor = kpiColor(avgVal, widget);
+          return (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id={`g${widget.id}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={lineColor} stopOpacity={0.5} />
+                    <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="name" stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
+                <YAxis stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
+                {!dataHidden && <Tooltip contentStyle={TOOLTIP_STYLE} />}
+                {widget.dynamic_color && widget.goal_value != null && widget.goal_value !== '' && (
+                  <ReferenceLine y={Number(widget.goal_value)} stroke={widget.color_on || '#ffb84d'} strokeDasharray="4 3" />
+                )}
+                <Area type="monotone" dataKey="value" stroke={lineColor} fill={`url(#g${widget.id})`} strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          );
+        })() : (() => {
+          const avgVal = aggregateValue(filtered, widget.field, 'avg');
+          const lineColor = kpiColor(avgVal, widget);
+          return (
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="name" stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
+                <YAxis stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
+                {!dataHidden && <Tooltip contentStyle={TOOLTIP_STYLE} />}
+                {widget.dynamic_color && widget.goal_value != null && widget.goal_value !== '' && (
+                  <ReferenceLine y={Number(widget.goal_value)} stroke={widget.color_on || '#ffb84d'} strokeDasharray="4 3" />
+                )}
+                <Line type="monotone" dataKey="value" stroke={lineColor} strokeWidth={2} dot={{ fill: lineColor, r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          );
+        })()}
       </div>
     </div>
   );

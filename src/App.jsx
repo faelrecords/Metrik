@@ -16,7 +16,7 @@ const NAV = [
   { to: '/diario', label: 'Diário' },
   { to: '/leads', label: 'Leads' },
   { to: '/landing', label: 'Landing Pages' },
-  { to: '/chat', label: 'IA', writeOnly: true },
+  { to: '/chat', label: 'Chat' },
   { to: '/configuracoes', label: 'Configurações', writeOnly: true },
   { to: '/llm', label: 'LLMs', writeOnly: true },
   { to: '/usuarios', label: 'Usuários', adminOnly: true }
@@ -27,7 +27,7 @@ function Navbar({ user, onLogout }) {
   const loc = useLocation();
   const canWrite = ['admin', 'super_admin'].includes(user.role);
   const links = user.role === 'user'
-    ? NAV.filter(n => ['/', '/diario', '/leads', '/landing'].includes(n.to))
+    ? NAV.filter(n => ['/', '/diario', '/leads', '/landing', '/chat'].includes(n.to))
     : NAV.filter(n => (!n.adminOnly || canWrite) && (!n.writeOnly || canWrite));
   return (
     <nav className="navbar">
@@ -91,10 +91,10 @@ export default function App() {
       <div className="container">
         <Routes>
           <Route path="/" element={<Dashboard user={user} />} />
-          <Route path="/diario" element={<Daily readOnly={readOnly} />} />
+          <Route path="/diario" element={<Daily />} />
           <Route path="/leads" element={<Leads readOnly={readOnly} />} />
           <Route path="/landing" element={<Landing readOnly={readOnly} />} />
-          <Route path="/chat" element={<Chat />} />
+          <Route path="/chat" element={<Chat user={user} />} />
           <Route path="/configuracoes" element={<Settings />} />
           <Route path="/tags" element={<Navigate to="/configuracoes" />} />
           <Route path="/llm" element={<LLMKeys />} />

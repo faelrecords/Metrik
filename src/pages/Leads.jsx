@@ -23,6 +23,7 @@ export default function Leads({ readOnly = false }) {
   const [bulkTags, setBulkTags] = useState([]);
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [bulkModal, setBulkModal] = useState(null);
   const importRef = useRef(null);
   const pageSize = 31;
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
@@ -56,7 +57,13 @@ export default function Leads({ readOnly = false }) {
 
   function setCampaign(i, k, v) {
     const cs = [...form.campaigns];
-    cs[i] = { ...cs[i], [k]: v };
+    const updated = { ...cs[i], [k]: v };
+    if (k === 'total_spent' || k === 'leads') {
+      const spent = Number(k === 'total_spent' ? v : updated.total_spent) || 0;
+      const leads = Number(k === 'leads' ? v : updated.leads) || 0;
+      updated.cpl = spent > 0 && leads > 0 ? (spent / leads).toFixed(2) : '';
+    }
+    cs[i] = updated;
     setForm({ ...form, campaigns: cs });
   }
 
@@ -195,6 +202,45 @@ export default function Leads({ readOnly = false }) {
     }
   }
 
+  function openBulk() {
+    setBulkModal({ phase: 'config', dateFrom: today(), dateTo: today(), campaignName: '', tags: [], leads: '', visits: '', total_spent: '' });
+  }
+
+  async function bulkNext() {
+    const { dateFrom, dateTo, campaignName, tags, currentDate, leads, visits, total_spent } = bulkModal;
+    const date = currentDate || dateFrom;
+    const leadsN = Number(leads) || 0;
+    const visitsN = Number(visits) || 0;
+    const spentN = Number(total_spent) || 0;
+    const cpl = spentN > 0 && leadsN > 0 ? spentN / leadsN : 0;
+    await api.post('/leads', {
+      period_start: date, period_end: date,
+      campaigns: [{ name: campaignName, leads: leadsN, visits: visitsN, total_spent: spentN, cpl, conversion_rate: visitsN > 0 ? (leadsN / visitsN) * 100 : 0 }],
+      tags
+    });
+    const next = new Date(date);
+    next.setDate(next.getDate() + 1);
+    const nextStr = next.toISOString().slice(0, 10);
+    if (nextStr > dateTo) {
+      setBulkModal(null);
+      load();
+    } else {
+      setBulkModal(prev => ({ ...prev, phase: 'entry', currentDate: nextStr, leads: '', visits: '', total_spent: '' }));
+    }
+  }
+
+  function bulkSetField(k, v) {
+    setBulkModal(prev => {
+      const next = { ...prev, [k]: v };
+      if (k === 'total_spent' || k === 'leads') {
+        const spent = Number(k === 'total_spent' ? v : next.total_spent) || 0;
+        const leads = Number(k === 'leads' ? v : next.leads) || 0;
+        next.bulkCpl = spent > 0 && leads > 0 ? (spent / leads).toFixed(2) : '';
+      }
+      return next;
+    });
+  }
+
   // Flatten records into one row per campaign for the compact table
   const flatRows = [];
   pageRows.forEach(r => {
@@ -220,6 +266,7 @@ export default function Leads({ readOnly = false }) {
           {!readOnly && <button className="btn" onClick={() => importRef.current?.click()}>Importar</button>}
           {!readOnly && <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => importXLS(e.target.files?.[0])} />}
           <button className="btn" onClick={exportXLS}>↓ Excel</button>
+          {!readOnly && <button className="btn" onClick={openBulk}>+ Em massa</button>}
           {!readOnly && <button className="btn accent" onClick={() => open(null)}>+ Adicionar relatório</button>}
         </div>
       </div>
@@ -380,6 +427,90 @@ export default function Leads({ readOnly = false }) {
           onCancel={() => setPendingDelete(null)}
           onConfirm={() => delNow(pendingDelete.id)}
         />
+      )}
+
+      {bulkModal && (
+        <div className="modal-backdrop" onClick={() => setBulkModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            {bulkModal.phase === 'config' ? (
+              <>
+                <div className="modal-header">
+                  <h2>Adição em massa · Configurar</h2>
+                  <button className="modal-close" onClick={() => setBulkModal(null)}>×</button>
+                </div>
+                <div className="field">
+                  <label className="label">Campanha (fixa para todo o período)</label>
+                  <input className="input" list="campaign-names-list" value={bulkModal.campaignName} onChange={e => setBulkModal(p => ({ ...p, campaignName: e.target.value }))} placeholder="Nome da campanha" autoFocus />
+                </div>
+                <div className="grid-2">
+                  <div className="field">
+                    <label className="label">Data inicial</label>
+                    <input className="input" type="date" value={bulkModal.dateFrom} onChange={e => setBulkModal(p => ({ ...p, dateFrom: e.target.value }))} />
+                  </div>
+                  <div className="field">
+                    <label className="label">Data final</label>
+                    <input className="input" type="date" value={bulkModal.dateTo} onChange={e => setBulkModal(p => ({ ...p, dateTo: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="field">
+                  <label className="label">Tags</label>
+                  <select className="select" value={bulkModal.tags[0] || ''} onChange={e => setBulkModal(p => ({ ...p, tags: e.target.value ? [Number(e.target.value)] : [] }))}>
+                    <option value="">Sem tag</option>
+                    {tags.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </div>
+                <div className="modal-actions">
+                  <button className="btn ghost" onClick={() => setBulkModal(null)}>Cancelar</button>
+                  <button className="btn accent" disabled={!bulkModal.campaignName.trim() || bulkModal.dateFrom > bulkModal.dateTo}
+                    onClick={() => setBulkModal(p => ({ ...p, phase: 'entry', currentDate: p.dateFrom, leads: '', visits: '', total_spent: '', bulkCpl: '' }))}>
+                    Iniciar →
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="modal-header">
+                  <h2>{bulkModal.campaignName} · {(() => { const d = new Date(bulkModal.currentDate + 'T12:00:00'); return d.toLocaleDateString('pt-BR'); })()}</h2>
+                  <button className="modal-close" onClick={() => setBulkModal(null)}>×</button>
+                </div>
+                <div className="text-tertiary" style={{ fontSize: 12, marginBottom: 12 }}>
+                  {bulkModal.currentDate <= bulkModal.dateTo ? `Até ${new Date(bulkModal.dateTo + 'T12:00:00').toLocaleDateString('pt-BR')}` : ''}
+                </div>
+                <div className="grid-2">
+                  <div className="field">
+                    <label className="label">Leads</label>
+                    <input className="input" type="number" value={bulkModal.leads} onChange={e => bulkSetField('leads', e.target.value)} autoFocus />
+                  </div>
+                  <div className="field">
+                    <label className="label">Visitas</label>
+                    <input className="input" type="number" value={bulkModal.visits} onChange={e => bulkSetField('visits', e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid-2">
+                  <div className="field">
+                    <label className="label">Total gasto (R$)</label>
+                    <input className="input" type="number" step="0.01" value={bulkModal.total_spent} onChange={e => bulkSetField('total_spent', e.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label className="label">CPL (R$)</label>
+                    <input className="input" type="number" step="0.01" value={bulkModal.bulkCpl || ''} readOnly placeholder="auto" style={{ opacity: 0.7 }} />
+                  </div>
+                </div>
+                {Number(bulkModal.visits) > 0 && Number(bulkModal.leads) > 0 && (
+                  <div className="text-tertiary" style={{ fontSize: 12, marginBottom: 8 }}>
+                    Conversão: <strong>{((Number(bulkModal.leads) / Number(bulkModal.visits)) * 100).toFixed(1)}%</strong>
+                  </div>
+                )}
+                <div className="modal-actions">
+                  <button className="btn ghost" onClick={() => setBulkModal(null)}>Cancelar</button>
+                  <button className="btn accent" onClick={bulkNext}>
+                    {bulkModal.currentDate >= bulkModal.dateTo ? 'Finalizar ✓' : 'Próximo →'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
 
       {filtersOpen && (
