@@ -54,7 +54,7 @@ function TagsSection() {
 
   return (
     <div>
-      <div className="section-header">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <div>
           <h2 style={{ marginBottom: 2 }}>Tags</h2>
           <div className="subtitle">Organize registros por tags personalizadas</div>
@@ -174,7 +174,7 @@ function CampaignsSection() {
 
   return (
     <div>
-      <div className="section-header">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <div>
           <h2 style={{ marginBottom: 2 }}>Campanhas</h2>
           <div className="subtitle">Nomes reutilizáveis para selecionar nos relatórios de leads</div>
