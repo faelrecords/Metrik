@@ -10,6 +10,14 @@ const AXIS_COLOR = '#acadb1';
 const CHART_TEXT = { fill: AXIS_COLOR };
 const PIE_LABEL = { fill: AXIS_COLOR, fontSize: 12, fontWeight: 600 };
 
+function kpiColor(value, widget) {
+  if (!widget.dynamic_color || widget.goal_value === '' || widget.goal_value == null) return widget.color;
+  const goal = Number(widget.goal_value);
+  if (value < goal) return widget.color_below || '#ff8078';
+  if (value > goal) return widget.color_above || '#30d173';
+  return widget.color_on || '#ffb84d';
+}
+
 function aggregateValue(rows, field, agg) {
   if (!rows.length) return 0;
   const nums = rows.map(r => Number(r[field]) || 0);
@@ -102,6 +110,8 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
   // KPI mode
   if (widget.chart_type === 'kpi') {
     const value = aggregateValue(filtered, widget.field, widget.aggregation);
+    const color = kpiColor(value, widget);
+    const goal = widget.dynamic_color && widget.goal_value !== '' && widget.goal_value != null ? Number(widget.goal_value) : null;
     return (
       <div className={`widget size-${widget.size || 3}`}>
         <div className="widget-head">
@@ -109,13 +119,21 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
           {actions}
         </div>
         <div className="widget-kpi">
-          <div className={`value ${dataHidden ? 'masked-value' : ''}`} style={{ color: widget.color }}>
+          <div className={`value ${dataHidden ? 'masked-value' : ''}`} style={{ color }}>
             {dataHidden ? '••••' : fmt(value, widget.field)}
           </div>
           <div className="label">
             {widget.aggregation === 'avg' ? 'Média' : widget.aggregation === 'sum' ? 'Total' : widget.aggregation} de {FIELD_LABELS[widget.field] || widget.field}
             {widget.campaign_filter ? ` · ${widget.campaign_filter}` : ''}
           </div>
+          {goal != null && !dataHidden && (
+            <div style={{ marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,0.35)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>Meta: {fmt(goal, widget.field)}</span>
+              <span style={{ color, fontWeight: 600 }}>
+                {value < goal ? '▼ abaixo' : value > goal ? '▲ acima' : '● na meta'}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     );

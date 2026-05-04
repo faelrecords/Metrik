@@ -135,15 +135,75 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
               {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
-          <div className="field">
-            <label className="label">Cor</label>
-            <div className="color-picker">
-              {COLORS.map(c => (
-                <div key={c} className={`color-dot ${w.color === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => set('color', c)} />
-              ))}
+          {!w.dynamic_color && (
+            <div className="field">
+              <label className="label">Cor</label>
+              <div className="color-picker">
+                {COLORS.map(c => (
+                  <div key={c} className={`color-dot ${w.color === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => set('color', c)} />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
+
+        {w.chart_type === 'kpi' && (
+          <div className="field">
+            <label className="label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Cor dinâmica por meta</span>
+              <div
+                onClick={() => set('dynamic_color', !w.dynamic_color)}
+                style={{
+                  width: 40, height: 22, borderRadius: 11,
+                  background: w.dynamic_color ? '#6d71f0' : 'rgba(255,255,255,0.12)',
+                  position: 'relative', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0
+                }}
+              >
+                <div style={{
+                  position: 'absolute', top: 3, left: w.dynamic_color ? 21 : 3,
+                  width: 16, height: 16, borderRadius: '50%',
+                  background: '#fff', transition: 'left 0.2s'
+                }} />
+              </div>
+            </label>
+            {w.dynamic_color && (
+              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div className="field" style={{ margin: 0 }}>
+                  <label className="label">Meta</label>
+                  <input
+                    className="input"
+                    type="number"
+                    step="any"
+                    value={w.goal_value ?? ''}
+                    onChange={e => set('goal_value', e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="Ex: 100"
+                  />
+                </div>
+                <div className="grid-3">
+                  <div className="field" style={{ margin: 0 }}>
+                    <label className="label">Abaixo da meta</label>
+                    <input className="input" type="color" style={{ height: 40, padding: '4px 6px', cursor: 'pointer' }}
+                      value={w.color_below || '#ff8078'} onChange={e => set('color_below', e.target.value)} />
+                  </div>
+                  <div className="field" style={{ margin: 0 }}>
+                    <label className="label">Na meta</label>
+                    <input className="input" type="color" style={{ height: 40, padding: '4px 6px', cursor: 'pointer' }}
+                      value={w.color_on || '#ffb84d'} onChange={e => set('color_on', e.target.value)} />
+                  </div>
+                  <div className="field" style={{ margin: 0 }}>
+                    <label className="label">Acima da meta</label>
+                    <input className="input" type="color" style={{ height: 40, padding: '4px 6px', cursor: 'pointer' }}
+                      value={w.color_above || '#30d173'} onChange={e => set('color_above', e.target.value)} />
+                  </div>
+                </div>
+                <div className="hint" style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: -4 }}>
+                  "Na meta" = valor exatamente igual ao número acima. Abaixo e acima são aplicados para qualquer desvio.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="modal-actions">
           <button className="btn ghost" onClick={onClose}>Cancelar</button>
           <button className="btn accent" onClick={() => onSave(w)}>Salvar</button>
