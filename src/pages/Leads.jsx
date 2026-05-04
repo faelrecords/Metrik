@@ -8,7 +8,7 @@ import DeleteConfirm from '../components/DeleteConfirm.jsx';
 import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
 import Pagination from '../components/Pagination.jsx';
 
-const newCampaign = () => ({ name: '', leads: '', total_spent: '', cpl: '' });
+const newCampaign = () => ({ name: '', leads: '', visits: '', total_spent: '', cpl: '' });
 
 export default function Leads({ readOnly = false }) {
   const [range, setRange] = useState({ ...ranges['30d'](), preset: '30d' });
@@ -71,12 +71,19 @@ export default function Leads({ readOnly = false }) {
       ...form,
       period_start: form.date,
       period_end: form.date,
-      campaigns: form.campaigns.filter(c => c.name).map(c => ({
-        name: c.name,
-        leads: Number(c.leads) || 0,
-        total_spent: Number(c.total_spent) || 0,
-        cpl: Number(c.cpl) || ((Number(c.total_spent) || 0) && Number(c.leads) ? (Number(c.total_spent) / Number(c.leads)) : 0)
-      }))
+      campaigns: form.campaigns.filter(c => c.name).map(c => {
+        const leads = Number(c.leads) || 0;
+        const visits = Number(c.visits) || 0;
+        const total_spent = Number(c.total_spent) || 0;
+        return {
+          name: c.name,
+          leads,
+          visits,
+          total_spent,
+          cpl: Number(c.cpl) || (total_spent && leads ? total_spent / leads : 0),
+          conversion_rate: visits > 0 ? (leads / visits) * 100 : 0
+        };
+      })
     };
     try {
       if (editing) await api.put(`/leads/${editing.id}`, f);
@@ -115,9 +122,11 @@ export default function Leads({ readOnly = false }) {
 
   function totalsOf(r) {
     const totalLeads = r.campaigns.reduce((s, c) => s + (c.leads || 0), 0);
+    const totalVisits = r.campaigns.reduce((s, c) => s + (c.visits || 0), 0);
     const totalCost = r.campaigns.reduce((s, c) => s + (Number(c.total_spent) || (c.leads || 0) * (c.cpl || 0)), 0);
     const avgCpl = totalLeads > 0 ? totalCost / totalLeads : 0;
-    return { totalLeads, totalCost, avgCpl };
+    const convRate = totalVisits > 0 ? (totalLeads / totalVisits) * 100 : 0;
+    return { totalLeads, totalVisits, totalCost, avgCpl, convRate };
   }
 
   async function exportXLS() {
@@ -129,6 +138,8 @@ export default function Leads({ readOnly = false }) {
           Data: fmtBR(r.period_start),
           Campanha: c.name,
           Leads: c.leads,
+          Visitas: c.visits || 0,
+          'Conversão (%)': (c.conversion_rate || 0).toFixed(1),
           'Total gasto': Number(c.total_spent) || (c.leads || 0) * (c.cpl || 0),
           CPL: c.cpl,
         });
@@ -145,6 +156,7 @@ export default function Leads({ readOnly = false }) {
       Data: today(),
       Campanha: 'Meta Ads - Conversão',
       Leads: 100,
+      Visitas: 500,
       'Total gasto': 1250,
       CPL: 12.5,
       Tags: 'Campanha'
@@ -173,9 +185,11 @@ export default function Leads({ readOnly = false }) {
           });
         }
         const leads = num(row.Leads);
+        const visits = num(row.Visitas || row.visitas || 0);
         const totalSpent = num(row['Total gasto'] || row.Gasto || row.Custo);
         const cpl = num(row.CPL) || (totalSpent && leads ? totalSpent / leads : 0);
-        groups.get(key).campaigns.push({ name, leads, total_spent: totalSpent, cpl });
+        const conversion_rate = visits > 0 ? (leads / visits) * 100 : 0;
+        groups.get(key).campaigns.push({ name, leads, visits, total_spent: totalSpent, cpl, conversion_rate });
       }
       let ok = 0;
       let fail = 0;
@@ -255,6 +269,16 @@ export default function Leads({ readOnly = false }) {
                     <div className="text-tertiary">
                       <strong className="text-primary" style={{ fontSize: 18 }}>{t.totalLeads}</strong> leads
                     </div>
+                    {t.totalVisits > 0 && (
+                      <div className="text-tertiary">
+                        Visitas: <strong className="text-primary">{t.totalVisits.toLocaleString()}</strong>
+                      </div>
+                    )}
+                    {t.totalVisits > 0 && (
+                      <div className="text-tertiary">
+                        Conv: <strong className="text-primary">{t.convRate.toFixed(1)}%</strong>
+                      </div>
+                    )}
                     <div className="text-tertiary">
                       Custo: <strong className="text-primary">R$ {t.totalCost.toFixed(2)}</strong>
                     </div>
@@ -267,13 +291,15 @@ export default function Leads({ readOnly = false }) {
                 </div>
                 <table className="table">
                   <thead>
-                    <tr><th>Campanha</th><th>Leads</th><th>Total gasto</th><th>CPL</th></tr>
+                    <tr><th>Campanha</th><th>Leads</th><th>Visitas</th><th>Conversão</th><th>Total gasto</th><th>CPL</th></tr>
                   </thead>
                   <tbody>
                     {r.campaigns.map((c, i) => (
                       <tr key={i}>
                         <td>{c.name}</td>
                         <td>{c.leads}</td>
+                        <td>{c.visits || 0}</td>
+                        <td>{(c.conversion_rate || 0).toFixed(1)}%</td>
                         <td>R$ {(Number(c.total_spent) || (Number(c.leads) * Number(c.cpl))).toFixed(2)}</td>
                         <td>R$ {Number(c.cpl).toFixed(2)}</td>
                       </tr>
@@ -305,6 +331,7 @@ export default function Leads({ readOnly = false }) {
                 <div className="sheet-row header">
                   <div>Nome da campanha</div>
                   <div>Leads</div>
+                  <div>Visitas</div>
                   <div>Total gasto (R$)</div>
                   <div>CPL (R$)</div>
                   <div></div>
@@ -313,6 +340,7 @@ export default function Leads({ readOnly = false }) {
                   <div className="sheet-row" key={i}>
                     <input value={c.name} onChange={e => setCampaign(i, 'name', e.target.value)} placeholder="Ex: Meta Ads — Conversão" />
                     <input type="number" value={c.leads} onChange={e => setCampaign(i, 'leads', e.target.value)} />
+                    <input type="number" value={c.visits || ''} onChange={e => setCampaign(i, 'visits', e.target.value)} placeholder="0" />
                     <input type="number" step="0.01" value={c.total_spent || ''} onChange={e => setCampaign(i, 'total_spent', e.target.value)} />
                     <input type="number" step="0.01" value={c.cpl} onChange={e => setCampaign(i, 'cpl', e.target.value)} />
                     <div className="row-action">
