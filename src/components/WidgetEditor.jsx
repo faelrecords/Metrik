@@ -147,7 +147,7 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
           )}
         </div>
 
-        {w.chart_type === 'kpi' && (
+        {w.chart_type !== 'pie' && (
           <div className="field">
             <label className="label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Cor dinâmica por meta</span>
