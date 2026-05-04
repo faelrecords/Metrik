@@ -29,7 +29,8 @@ export default function Leads({ readOnly = false }) {
   const [form, setForm] = useState({
     date: today(),
     campaigns: [newCampaign()],
-    tags: []
+    tags: [],
+    notes: ''
   });
 
   async function load() {
@@ -44,11 +45,10 @@ export default function Leads({ readOnly = false }) {
 
   function open(row) {
     setEditing(row || null);
-    setForm(row ? { ...row, date: row.period_start, campaigns: row.campaigns.length ? row.campaigns : [newCampaign()] } : {
-      date: today(),
-      campaigns: [newCampaign()],
-      tags: []
-    });
+    setForm(row
+      ? { ...row, date: row.period_start, notes: row.notes || '', campaigns: row.campaigns.length ? row.campaigns : [newCampaign()] }
+      : { date: today(), campaigns: [newCampaign()], tags: [], notes: '' }
+    );
     setShow(true);
   }
 
@@ -120,15 +120,6 @@ export default function Leads({ readOnly = false }) {
     load();
   }
 
-  function totalsOf(r) {
-    const totalLeads = r.campaigns.reduce((s, c) => s + (c.leads || 0), 0);
-    const totalVisits = r.campaigns.reduce((s, c) => s + (c.visits || 0), 0);
-    const totalCost = r.campaigns.reduce((s, c) => s + (Number(c.total_spent) || (c.leads || 0) * (c.cpl || 0)), 0);
-    const avgCpl = totalLeads > 0 ? totalCost / totalLeads : 0;
-    const convRate = totalVisits > 0 ? (totalLeads / totalVisits) * 100 : 0;
-    return { totalLeads, totalVisits, totalCost, avgCpl, convRate };
-  }
-
   async function exportXLS() {
     const XLSX = await import('xlsx');
     const flat = [];
@@ -177,12 +168,7 @@ export default function Leads({ readOnly = false }) {
         if (!period_start || !name) continue;
         const key = `${period_start}|${period_end}|${row.Tags || ''}`;
         if (!groups.has(key)) {
-          groups.set(key, {
-            period_start,
-            period_end,
-            tags: splitTags(row.Tags),
-            campaigns: []
-          });
+          groups.set(key, { period_start, period_end, tags: splitTags(row.Tags), campaigns: [] });
         }
         const leads = num(row.Leads);
         const visits = num(row.Visitas || row.visitas || 0);
@@ -191,18 +177,12 @@ export default function Leads({ readOnly = false }) {
         const conversion_rate = visits > 0 ? (leads / visits) * 100 : 0;
         groups.get(key).campaigns.push({ name, leads, visits, total_spent: totalSpent, cpl, conversion_rate });
       }
-      let ok = 0;
-      let fail = 0;
+      let ok = 0, fail = 0;
       for (const group of groups.values()) {
         try {
-          await api.post('/leads', {
-            ...group,
-            tags: await ensureTagIds(group.tags, tags, api)
-          });
+          await api.post('/leads', { ...group, tags: await ensureTagIds(group.tags, tags, api) });
           ok++;
-        } catch {
-          fail++;
-        }
+        } catch { fail++; }
       }
       await load();
       alert(`Importados: ${ok}${fail ? ` · Falhas: ${fail}` : ''}`);
@@ -212,6 +192,18 @@ export default function Leads({ readOnly = false }) {
       if (importRef.current) importRef.current.value = '';
     }
   }
+
+  // Flatten records into one row per campaign for the compact table
+  const flatRows = [];
+  pageRows.forEach(r => {
+    if (r.campaigns.length === 0) {
+      flatRows.push({ record: r, campaign: null, isFirst: true });
+    } else {
+      r.campaigns.forEach((c, ci) => {
+        flatRows.push({ record: r, campaign: c, isFirst: ci === 0 });
+      });
+    }
+  });
 
   return (
     <div>
@@ -239,83 +231,72 @@ export default function Leads({ readOnly = false }) {
         </div>
       )}
 
-      {rows.length === 0 ? (
-        <div className="glass">
+      <div className="glass" style={{ padding: 0, overflow: 'hidden' }}>
+        {rows.length === 0 ? (
           <div className="empty-state">
             <h3>Nenhum relatório no período</h3>
             {!readOnly && <p>Clique em "+ Adicionar relatório" para começar.</p>}
           </div>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {pageRows.map(r => {
-            const t = totalsOf(r);
-            return (
-              <div key={r.id} className="glass">
-                <div className="row-flex mb-2" style={{ justifyContent: 'space-between' }}>
-                  <div>
-                    <div className="row-flex">
-                      {!readOnly && <input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggleSelected(r.id)} />}
-                      <h3 style={{ marginBottom: 4 }}>{fmtBR(r.period_start)}</h3>
-                    </div>
-                    <div className="row-flex">
-                      {(r.tags || []).map(id => {
-                        const tag = tags.find(x => x.id === id);
-                        return tag ? <TagChip key={id} tag={tag} /> : null;
-                      })}
-                    </div>
-                  </div>
-                  <div className="row-flex">
-                    <div className="text-tertiary">
-                      <strong className="text-primary" style={{ fontSize: 18 }}>{t.totalLeads}</strong> leads
-                    </div>
-                    {t.totalVisits > 0 && (
-                      <div className="text-tertiary">
-                        Visitas: <strong className="text-primary">{t.totalVisits.toLocaleString()}</strong>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                {!readOnly && <th><input type="checkbox" checked={pageRows.length > 0 && pageRows.every(r => selected.includes(r.id))} onChange={e => setSelected(e.target.checked ? [...new Set([...selected, ...pageRows.map(r => r.id)])] : selected.filter(id => !pageRows.some(r => r.id === id)))} /></th>}
+                <th>Data</th>
+                <th>Campanha</th>
+                <th>Leads</th>
+                <th>Visitas</th>
+                <th>Conversão</th>
+                <th>Total gasto</th>
+                <th>CPL</th>
+                <th>Tags</th>
+                {!readOnly && <th></th>}
+              </tr>
+            </thead>
+            <tbody>
+              {flatRows.map(({ record: r, campaign: c, isFirst }, fi) => (
+                <tr key={`${r.id}-${fi}`} style={isFirst && fi > 0 ? { borderTop: '2px solid rgba(255,255,255,0.06)' } : {}}>
+                  {!readOnly && (
+                    <td>{isFirst ? <input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggleSelected(r.id)} /> : null}</td>
+                  )}
+                  <td style={{ whiteSpace: 'nowrap' }}>{isFirst ? fmtBR(r.period_start) : ''}</td>
+                  <td>{c?.name || '—'}</td>
+                  <td>{c?.leads ?? 0}</td>
+                  <td>{c?.visits ?? 0}</td>
+                  <td>{(c?.conversion_rate || 0).toFixed(1)}%</td>
+                  <td>R$ {(Number(c?.total_spent) || (Number(c?.leads || 0) * Number(c?.cpl || 0))).toFixed(2)}</td>
+                  <td>R$ {Number(c?.cpl || 0).toFixed(2)}</td>
+                  <td>
+                    {isFirst ? (
+                      <div className="row-flex">
+                        {(r.tags || []).map(id => {
+                          const tag = tags.find(x => x.id === id);
+                          return tag ? <TagChip key={id} tag={tag} /> : null;
+                        })}
                       </div>
-                    )}
-                    {t.totalVisits > 0 && (
-                      <div className="text-tertiary">
-                        Conv: <strong className="text-primary">{t.convRate.toFixed(1)}%</strong>
-                      </div>
-                    )}
-                    <div className="text-tertiary">
-                      Custo: <strong className="text-primary">R$ {t.totalCost.toFixed(2)}</strong>
-                    </div>
-                    <div className="text-tertiary">
-                      CPL médio: <strong className="text-primary">R$ {t.avgCpl.toFixed(2)}</strong>
-                    </div>
-                    {!readOnly && <button className="btn sm ghost" onClick={() => open(r)}>Editar</button>}
-                    {!readOnly && <button className="btn sm danger" onClick={() => del(r.id)}>×</button>}
-                  </div>
-                </div>
-                <table className="table">
-                  <thead>
-                    <tr><th>Campanha</th><th>Leads</th><th>Visitas</th><th>Conversão</th><th>Total gasto</th><th>CPL</th></tr>
-                  </thead>
-                  <tbody>
-                    {r.campaigns.map((c, i) => (
-                      <tr key={i}>
-                        <td>{c.name}</td>
-                        <td>{c.leads}</td>
-                        <td>{c.visits || 0}</td>
-                        <td>{(c.conversion_rate || 0).toFixed(1)}%</td>
-                        <td>R$ {(Number(c.total_spent) || (Number(c.leads) * Number(c.cpl))).toFixed(2)}</td>
-                        <td>R$ {Number(c.cpl).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            );
-          })}
-          <Pagination page={page} totalPages={totalPages} onPage={setPage} />
-        </div>
-      )}
+                    ) : null}
+                  </td>
+                  {!readOnly && (
+                    <td className="actions-cell">
+                      {isFirst ? (
+                        <>
+                          <button className="btn sm ghost" onClick={() => open(r)}>Editar</button>
+                          <button className="btn sm danger" onClick={() => del(r.id)}>×</button>
+                        </>
+                      ) : null}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+      </div>
 
       {show && (
         <div className="modal-backdrop" onClick={() => setShow(false)}>
-          <div className="modal wide" onClick={e => e.stopPropagation()}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editing ? 'Editar relatório' : 'Novo relatório'}</h2>
               <button className="modal-close" onClick={() => setShow(false)}>×</button>
@@ -327,34 +308,55 @@ export default function Leads({ readOnly = false }) {
 
             <div className="field">
               <label className="label">Campanhas</label>
-              <div className="sheet">
-                <div className="sheet-row header">
-                  <div>Nome da campanha</div>
-                  <div>Leads</div>
-                  <div>Visitas</div>
-                  <div>Total gasto (R$)</div>
-                  <div>CPL (R$)</div>
-                  <div></div>
-                </div>
-                {form.campaigns.map((c, i) => (
-                  <div className="sheet-row" key={i}>
-                    <input value={c.name} onChange={e => setCampaign(i, 'name', e.target.value)} placeholder="Ex: Meta Ads — Conversão" />
-                    <input type="number" value={c.leads} onChange={e => setCampaign(i, 'leads', e.target.value)} />
-                    <input type="number" value={c.visits || ''} onChange={e => setCampaign(i, 'visits', e.target.value)} placeholder="0" />
-                    <input type="number" step="0.01" value={c.total_spent || ''} onChange={e => setCampaign(i, 'total_spent', e.target.value)} />
-                    <input type="number" step="0.01" value={c.cpl} onChange={e => setCampaign(i, 'cpl', e.target.value)} />
-                    <div className="row-action">
-                      <button onClick={() => removeRow(i)} title="Remover">×</button>
+              {form.campaigns.map((c, i) => (
+                <div key={i} className="glass-sm" style={{ padding: '10px 12px', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                    <input
+                      className="input"
+                      value={c.name}
+                      onChange={e => setCampaign(i, 'name', e.target.value)}
+                      placeholder="Nome da campanha"
+                      style={{ flex: 1 }}
+                    />
+                    <button className="btn sm danger" onClick={() => removeRow(i)} title="Remover">×</button>
+                  </div>
+                  <div className="grid-2">
+                    <div className="field">
+                      <label className="label">Leads</label>
+                      <input className="input" type="number" value={c.leads} onChange={e => setCampaign(i, 'leads', e.target.value)} />
+                    </div>
+                    <div className="field">
+                      <label className="label">Visitas</label>
+                      <input className="input" type="number" value={c.visits || ''} onChange={e => setCampaign(i, 'visits', e.target.value)} placeholder="0" />
                     </div>
                   </div>
-                ))}
-              </div>
-              <button className="btn sm ghost mt-1" onClick={addRow}>+ Linha</button>
+                  <div className="grid-2">
+                    <div className="field">
+                      <label className="label">Total gasto (R$)</label>
+                      <input className="input" type="number" step="0.01" value={c.total_spent || ''} onChange={e => setCampaign(i, 'total_spent', e.target.value)} />
+                    </div>
+                    <div className="field">
+                      <label className="label">CPL (R$)</label>
+                      <input className="input" type="number" step="0.01" value={c.cpl || ''} onChange={e => setCampaign(i, 'cpl', e.target.value)} placeholder="auto" />
+                    </div>
+                  </div>
+                  {(Number(c.visits) > 0 && Number(c.leads) > 0) && (
+                    <div className="text-tertiary" style={{ fontSize: 12, marginTop: 4 }}>
+                      Conversão: <strong>{((Number(c.leads) / Number(c.visits)) * 100).toFixed(1)}%</strong>
+                    </div>
+                  )}
+                </div>
+              ))}
+              <button className="btn sm ghost mt-1" onClick={addRow}>+ Campanha</button>
             </div>
 
             <div className="field">
               <label className="label">Tags</label>
               <TagSelector value={form.tags} onChange={v => setForm({ ...form, tags: v })} />
+            </div>
+            <div className="field">
+              <label className="label">Notas</label>
+              <textarea className="textarea" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
             </div>
             <div className="modal-actions">
               <button className="btn ghost" onClick={() => setShow(false)}>Cancelar</button>
@@ -363,6 +365,7 @@ export default function Leads({ readOnly = false }) {
           </div>
         </div>
       )}
+
       {pendingDelete && (
         <DeleteConfirm
           message={pendingDelete.message}
@@ -370,6 +373,7 @@ export default function Leads({ readOnly = false }) {
           onConfirm={() => delNow(pendingDelete.id)}
         />
       )}
+
       {filtersOpen && (
         <div className="drawer-backdrop" onClick={() => setFiltersOpen(false)}>
           <aside className="filter-drawer" onClick={e => e.stopPropagation()}>
