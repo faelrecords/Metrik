@@ -1,10 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
-import { today, fmtBR } from '../utils/dates.js';
-import { ranges } from '../utils/dates.js';
+import { today, fmtBR, addDays, ranges } from '../utils/dates.js';
 import DateRangePicker from '../components/DateRangePicker.jsx';
 import TagSelector, { TagFilter, TagChip } from '../components/TagSelector.jsx';
-import { ensureTagIds, firstSheetRows, num, parseDate, readWorkbook, splitTags, writeTemplate } from '../utils/spreadsheet.js';
+import { ensureTagIds, firstSheetRows, num, parseDate, readWorkbook, splitTags } from '../utils/spreadsheet.js';
 import DeleteConfirm from '../components/DeleteConfirm.jsx';
 import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
 import Pagination from '../components/Pagination.jsx';
@@ -27,6 +26,7 @@ export default function Landing({ readOnly = false }) {
   const [groupModal, setGroupModal] = useState(null);
   const [bulkTagModal, setBulkTagModal] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [templateModal, setTemplateModal] = useState(null);
   const [groups, setGroups] = useState(() => {
     try { return JSON.parse(localStorage.getItem('metrik_landing_groups') || '["Geral"]'); }
     catch { return ['Geral']; }
@@ -191,12 +191,29 @@ export default function Landing({ readOnly = false }) {
     XLSX.writeFile(wb, `${safeName}.xlsx`);
   }
 
-  async function exportTemplate() {
-    await writeTemplate('template_landing_pages.xlsx', 'Landing pages', [{
-      Data: today(),
-      Visitas: 1000,
-      Leads: 100
-    }]);
+  function openTemplateModal() {
+    const defaultPage = activePage || pages[0] || null;
+    const from = addDays(today(), -6);
+    setTemplateModal({ pageId: defaultPage?.id ?? '', dateFrom: from, dateTo: today() });
+  }
+
+  async function exportFromModal() {
+    if (!templateModal) return;
+    const XLSX = await import('xlsx');
+    const page = pages.find(p => p.id === Number(templateModal.pageId));
+    if (!page || !templateModal.dateFrom || !templateModal.dateTo) return;
+    const rows = [];
+    let cur = templateModal.dateFrom;
+    while (cur <= templateModal.dateTo) {
+      rows.push({ Data: cur, Visitas: '', Leads: '' });
+      cur = addDays(cur, 1);
+    }
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Landing');
+    const safeName = page.title.replace(/[\\/:*?"<>|]/g, '_');
+    XLSX.writeFile(wb, `template_${safeName}.xlsx`);
+    setTemplateModal(null);
   }
 
   async function importXLS(file, targetPage = null) {
@@ -208,12 +225,13 @@ export default function Landing({ readOnly = false }) {
       let ok = 0;
       let fail = 0;
       for (const row of data) {
-        const title = String(row.Título || row.Titulo || row.Página || row.Pagina || targetPage?.title || '').trim();
-        const url = String(row.URL || targetPage?.url || '').trim();
         const date = parseDate(row.Data || row['Início'] || row.Inicio);
         const period_start = date;
         const period_end = parseDate(row.Fim) || date;
-        if (!title || !url || !period_start) { fail++; continue; }
+        if (!period_start) { fail++; continue; }
+        const title = String(row.Título || row.Titulo || row.Página || row.Pagina || targetPage?.title || '').trim();
+        const url = String(row.URL || targetPage?.url || '').trim();
+        if (!targetPage && (!title || !url)) { fail++; continue; }
         try {
           let page = targetPage || pageMap.get(`${title}|${url}`);
           if (!page) {
@@ -253,7 +271,7 @@ export default function Landing({ readOnly = false }) {
         </div>
         <div className="row-flex">
           <button className="btn" onClick={() => setFiltersOpen(true)}>Filtros</button>
-          {!readOnly && <button className="btn" onClick={exportTemplate}>Template</button>}
+          {!readOnly && <button className="btn" onClick={openTemplateModal}>Template</button>}
           {!readOnly && <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => { importXLS(e.target.files?.[0], importTargetRef.current); importTargetRef.current = null; }} />}
           <button className="btn" onClick={exportXLS}>↓ Excel</button>
           {!readOnly && <button className="btn accent" onClick={() => open(null)}>+ Nova landing</button>}
@@ -509,6 +527,45 @@ export default function Landing({ readOnly = false }) {
           </div>
         </div>
       )}
+      {templateModal && (
+        <div className="modal-backdrop" onClick={() => setTemplateModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Exportar template</h2>
+              <button className="modal-close" onClick={() => setTemplateModal(null)}>×</button>
+            </div>
+            <div className="field">
+              <label className="label">Landing page</label>
+              <select className="select" value={templateModal.pageId} onChange={e => setTemplateModal(p => ({ ...p, pageId: Number(e.target.value) }))}>
+                <option value="">Selecione uma página</option>
+                {pages.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+              </select>
+            </div>
+            <div className="grid-2">
+              <div className="field">
+                <label className="label">Data inicial</label>
+                <input className="input" type="date" value={templateModal.dateFrom} onChange={e => setTemplateModal(p => ({ ...p, dateFrom: e.target.value }))} />
+              </div>
+              <div className="field">
+                <label className="label">Data final</label>
+                <input className="input" type="date" value={templateModal.dateTo} onChange={e => setTemplateModal(p => ({ ...p, dateTo: e.target.value }))} />
+              </div>
+            </div>
+            {templateModal.pageId && templateModal.dateFrom && templateModal.dateTo && templateModal.dateFrom <= templateModal.dateTo && (
+              <div className="text-tertiary" style={{ fontSize: 12, marginBottom: 4 }}>
+                {(() => { let n = 0, c = templateModal.dateFrom; while (c <= templateModal.dateTo) { n++; c = addDays(c, 1); } return `${n} linha${n !== 1 ? 's' : ''} (uma por dia)`; })()}
+              </div>
+            )}
+            <div className="modal-actions">
+              <button className="btn ghost" onClick={() => setTemplateModal(null)}>Cancelar</button>
+              <button className="btn accent" disabled={!templateModal.pageId || !templateModal.dateFrom || !templateModal.dateTo || templateModal.dateFrom > templateModal.dateTo} onClick={exportFromModal}>
+                ↓ Baixar template
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {pendingDelete && (
         <DeleteConfirm
           message={pendingDelete.message}
