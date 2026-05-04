@@ -15,6 +15,7 @@ export default function Leads({ readOnly = false }) {
   const [tagFilter, setTagFilter] = useState(null);
   const [rows, setRows] = useState([]);
   const [tags, setTags] = useState([]);
+  const [campaignNames, setCampaignNames] = useState([]);
   const [show, setShow] = useState(false);
   const [editing, setEditing] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -36,9 +37,10 @@ export default function Leads({ readOnly = false }) {
   async function load() {
     const params = new URLSearchParams({ from: range.from, to: range.to });
     if (tagFilter) params.set('tag', tagFilter);
-    const [r, t] = await Promise.all([api.get(`/leads?${params}`), api.get('/tags')]);
+    const [r, t, cn] = await Promise.all([api.get(`/leads?${params}`), api.get('/tags'), api.get('/campaign_names')]);
     setRows(r);
     setTags(t);
+    setCampaignNames(cn);
   }
   useEffect(() => { load(); }, [range.from, range.to, tagFilter]);
   useEffect(() => { setPage(1); }, [range.from, range.to, tagFilter]);
@@ -313,11 +315,17 @@ export default function Leads({ readOnly = false }) {
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
                     <input
                       className="input"
+                      list="campaign-names-list"
                       value={c.name}
                       onChange={e => setCampaign(i, 'name', e.target.value)}
                       placeholder="Nome da campanha"
                       style={{ flex: 1 }}
                     />
+                    <datalist id="campaign-names-list">
+                      {campaignNames.filter(cn => cn.active).map(cn => (
+                        <option key={cn.id} value={cn.name} />
+                      ))}
+                    </datalist>
                     <button className="btn sm danger" onClick={() => removeRow(i)} title="Remover">×</button>
                   </div>
                   <div className="grid-2">

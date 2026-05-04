@@ -18,6 +18,7 @@ export default function Dashboard({ user }) {
   const [daily, setDaily] = useState([]);
   const [leads, setLeads] = useState([]);
   const [landing, setLanding] = useState([]);
+  const [campaignNames, setCampaignNames] = useState([]);
   const [editing, setEditing] = useState(null);
   const [showNew, setShowNew] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -37,16 +38,18 @@ export default function Dashboard({ user }) {
     const list = dashboards.length ? dashboards : await loadDashboards();
     const dash = activeDashboard || list[0];
     if (!dash) return;
-    const [d, l, lp, ws] = await Promise.all([
+    const [d, l, lp, ws, cn] = await Promise.all([
       api.get(`/daily?${params}`),
       api.get(`/leads?${params}`),
       api.get('/landing'),
-      api.get(`/widgets?dashboard_id=${dash.id}`)
+      api.get(`/widgets?dashboard_id=${dash.id}`),
+      api.get('/campaign_names')
     ]);
     setDaily(d);
     setLeads(l);
     setLanding(lp);
     setWidgets(ws);
+    setCampaignNames(cn);
   }
 
   useEffect(() => { loadDashboards(); }, []);
@@ -178,6 +181,7 @@ export default function Dashboard({ user }) {
           onSave={saveWidget}
           onClose={() => { setEditing(null); setShowNew(false); }}
           landingPages={landing}
+          campaignNames={campaignNames}
         />
       )}
       {pendingDelete && (

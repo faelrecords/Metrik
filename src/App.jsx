@@ -7,7 +7,7 @@ import Daily from './pages/Daily.jsx';
 import Leads from './pages/Leads.jsx';
 import Landing from './pages/Landing.jsx';
 import Chat from './pages/Chat.jsx';
-import Tags from './pages/Tags.jsx';
+import Settings from './pages/Settings.jsx';
 import Users from './pages/Users.jsx';
 import LLMKeys from './pages/LLMKeys.jsx';
 
@@ -17,7 +17,7 @@ const NAV = [
   { to: '/leads', label: 'Leads' },
   { to: '/landing', label: 'Landing Pages' },
   { to: '/chat', label: 'IA', writeOnly: true },
-  { to: '/tags', label: 'Tags', writeOnly: true },
+  { to: '/configuracoes', label: 'Configurações', writeOnly: true },
   { to: '/llm', label: 'LLMs', writeOnly: true },
   { to: '/usuarios', label: 'Usuários', adminOnly: true }
 ];
@@ -95,7 +95,8 @@ export default function App() {
           <Route path="/leads" element={<Leads readOnly={readOnly} />} />
           <Route path="/landing" element={<Landing readOnly={readOnly} />} />
           <Route path="/chat" element={<Chat />} />
-          <Route path="/tags" element={<Tags />} />
+          <Route path="/configuracoes" element={<Settings />} />
+          <Route path="/tags" element={<Navigate to="/configuracoes" />} />
           <Route path="/llm" element={<LLMKeys />} />
           <Route path="/usuarios" element={<Users user={user} />} />
           <Route path="*" element={<Navigate to="/" />} />

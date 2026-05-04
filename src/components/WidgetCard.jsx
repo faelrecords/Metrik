@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area,
-  PieChart, Pie, Cell, XAxis, YAxis, Tooltip, CartesianGrid, Legend
+  PieChart, Pie, Cell, XAxis, YAxis, Tooltip, CartesianGrid
 } from 'recharts';
 import { fmtBRShort } from '../utils/dates.js';
 
@@ -23,25 +23,21 @@ function aggregateValue(rows, field, agg) {
 
 function fmt(n, field) {
   if (n === undefined || n === null || isNaN(n)) return '-';
-  if (field === 'conversion_rate') return n.toFixed(2) + '%';
+  if (field === 'conversion_rate' || field === 'conversion') return n.toFixed(2) + '%';
   if (['cpl', 'total_spent'].includes(field)) return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (Number.isInteger(n)) return n.toLocaleString('pt-BR');
   return n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 }
 
 const FIELD_LABELS = {
-  leads: 'Leads',
-  cpl: 'CPL',
-  total_spent: 'Gasto',
-  visits: 'Visitas',
-  conversion_rate: 'Conversão'
+  leads: 'Leads', cpl: 'CPL', total_spent: 'Gasto', visits: 'Visitas',
+  conversion_rate: 'Conversão', totalVisits: 'Visitas', totalLeads: 'Leads', conversion: 'Conversão'
 };
 
 function EyeIcon({ hidden }) {
   return hidden ? (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M3 3l18 18" />
-      <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+      <path d="M3 3l18 18" /><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
       <path d="M9.5 5.4A10.8 10.8 0 0 1 12 5c5 0 8.5 4.4 9.5 7a13 13 0 0 1-2.3 3.6" />
       <path d="M6.4 6.9A13 13 0 0 0 2.5 12c1 2.6 4.5 7 9.5 7 1.4 0 2.7-.3 3.8-.9" />
     </svg>
@@ -53,16 +49,28 @@ function EyeIcon({ hidden }) {
   );
 }
 
+const TOOLTIP_STYLE = { background: 'rgba(20,20,21,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e8e7ec' };
+
 export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, onEdit, onDelete }) {
   const [dataHidden, setDataHidden] = useState(false);
+
   const filtered = useMemo(() => {
     if (widget.source === 'daily') return dataDaily;
     if (widget.source === 'leads') {
-      // expand campaigns
       const arr = [];
       for (const r of dataLeads) {
         for (const c of r.campaigns || []) {
-          arr.push({ name: c.name, leads: c.leads, cpl: c.cpl, total_spent: c.total_spent || ((Number(c.leads) || 0) * (Number(c.cpl) || 0)), period: r.period_start });
+          // apply campaign filter if set
+          if (widget.campaign_filter && c.name !== widget.campaign_filter) continue;
+          arr.push({
+            name: c.name,
+            leads: c.leads || 0,
+            visits: c.visits || 0,
+            conversion_rate: c.conversion_rate || 0,
+            cpl: c.cpl || 0,
+            total_spent: Number(c.total_spent) || ((Number(c.leads) || 0) * (Number(c.cpl) || 0)),
+            period: r.period_start
+          });
         }
       }
       return arr;
@@ -75,24 +83,15 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
         const entries = Array.isArray(p.entries) ? p.entries : [];
         const totalVisits = entries.reduce((s, e) => s + (Number(e.visits) || 0), 0);
         const totalLeads = entries.reduce((s, e) => s + (Number(e.leads) || 0), 0);
-        return {
-          ...p,
-          totalVisits,
-          totalLeads,
-          conversion: totalVisits > 0 ? (totalLeads / totalVisits) * 100 : 0
-        };
+        return { ...p, totalVisits, totalLeads, conversion: totalVisits > 0 ? (totalLeads / totalVisits) * 100 : 0 };
       });
     }
     return [];
-  }, [widget.source, widget.landing_id, dataDaily, dataLeads, dataLanding]);
+  }, [widget.source, widget.landing_id, widget.campaign_filter, dataDaily, dataLeads, dataLanding]);
+
   const actions = (
     <div className="widget-actions">
-      <button
-        type="button"
-        onClick={() => setDataHidden(v => !v)}
-        title={dataHidden ? 'Mostrar dados' : 'Ocultar dados'}
-        aria-label={dataHidden ? 'Mostrar dados' : 'Ocultar dados'}
-      >
+      <button type="button" onClick={() => setDataHidden(v => !v)} title={dataHidden ? 'Mostrar dados' : 'Ocultar dados'}>
         <EyeIcon hidden={dataHidden} />
       </button>
       {onEdit && <button onClick={onEdit}>✎</button>}
@@ -110,25 +109,41 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
           {actions}
         </div>
         <div className="widget-kpi">
-          <div className={`value ${dataHidden ? 'masked-value' : ''}`} style={{ color: widget.color }}>{dataHidden ? '••••' : fmt(value, widget.field)}</div>
-          <div className="label">{widget.aggregation === 'avg' ? 'Média' : widget.aggregation === 'sum' ? 'Total' : widget.aggregation} de {FIELD_LABELS[widget.field] || widget.field}</div>
+          <div className={`value ${dataHidden ? 'masked-value' : ''}`} style={{ color: widget.color }}>
+            {dataHidden ? '••••' : fmt(value, widget.field)}
+          </div>
+          <div className="label">
+            {widget.aggregation === 'avg' ? 'Média' : widget.aggregation === 'sum' ? 'Total' : widget.aggregation} de {FIELD_LABELS[widget.field] || widget.field}
+            {widget.campaign_filter ? ` · ${widget.campaign_filter}` : ''}
+          </div>
         </div>
       </div>
     );
   }
 
-  // chart data
+  // Build chart data
   let chartData = [];
   if (widget.source === 'daily') {
     chartData = filtered.map(r => ({ name: fmtBRShort(r.date), value: Number(r[widget.field]) || 0 }));
   } else if (widget.source === 'leads') {
-    // group by campaign name, sum leads
-    const byName = {};
-    for (const c of filtered) {
-      if (!byName[c.name]) byName[c.name] = 0;
-      byName[c.name] += Number(c[widget.field]) || 0;
+    if (widget.chart_type === 'pie' || widget.chart_type === 'bar') {
+      // group by campaign name
+      const byName = {};
+      for (const c of filtered) {
+        if (!byName[c.name]) byName[c.name] = 0;
+        byName[c.name] += Number(c[widget.field]) || 0;
+      }
+      chartData = Object.entries(byName).map(([name, value]) => ({ name, value }));
+    } else {
+      // time-series: group by date
+      const byDate = {};
+      for (const c of filtered) {
+        const d = c.period;
+        if (!byDate[d]) byDate[d] = 0;
+        byDate[d] += Number(c[widget.field]) || 0;
+      }
+      chartData = Object.keys(byDate).sort().map(d => ({ name: fmtBRShort(d), value: byDate[d] }));
     }
-    chartData = Object.entries(byName).map(([name, value]) => ({ name, value }));
   } else if (widget.source === 'landing') {
     chartData = filtered.map(p => ({
       name: p.title,
@@ -139,21 +154,22 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
   return (
     <div className={`widget size-${widget.size || 6}`}>
       <div className="widget-head">
-        <div className="widget-title">{widget.title}</div>
+        <div className="widget-title">
+          {widget.title}
+          {widget.campaign_filter && <span className="text-tertiary" style={{ fontSize: 11, marginLeft: 6 }}>· {widget.campaign_filter}</span>}
+        </div>
         {actions}
       </div>
       <div className="widget-chart">
         {chartData.length === 0 ? (
-          <div className="empty-widget">
-            <div>Sem dados para o período</div>
-          </div>
+          <div className="empty-widget"><div>Sem dados para o período</div></div>
         ) : widget.chart_type === 'pie' ? (
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={chartData} dataKey="value" nameKey="name" outerRadius={80} label={dataHidden ? false : PIE_LABEL}>
                 {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
-              {!dataHidden && <Tooltip contentStyle={{ background: 'rgba(20,20,21,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e8e7ec' }} />}
+              {!dataHidden && <Tooltip contentStyle={TOOLTIP_STYLE} />}
             </PieChart>
           </ResponsiveContainer>
         ) : widget.chart_type === 'bar' ? (
@@ -162,7 +178,7 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="name" stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
               <YAxis stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
-              {!dataHidden && <Tooltip contentStyle={{ background: 'rgba(20,20,21,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e8e7ec' }} />}
+              {!dataHidden && <Tooltip contentStyle={TOOLTIP_STYLE} />}
               <Bar dataKey="value" fill={widget.color} radius={[6, 6, 0, 0]} minPointSize={1} />
             </BarChart>
           </ResponsiveContainer>
@@ -178,7 +194,7 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="name" stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
               <YAxis stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
-              {!dataHidden && <Tooltip contentStyle={{ background: 'rgba(20,20,21,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e8e7ec' }} />}
+              {!dataHidden && <Tooltip contentStyle={TOOLTIP_STYLE} />}
               <Area type="monotone" dataKey="value" stroke={widget.color} fill={`url(#g${widget.id})`} strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
@@ -188,7 +204,7 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="name" stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
               <YAxis stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
-              {!dataHidden && <Tooltip contentStyle={{ background: 'rgba(20,20,21,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e8e7ec' }} />}
+              {!dataHidden && <Tooltip contentStyle={TOOLTIP_STYLE} />}
               <Line type="monotone" dataKey="value" stroke={widget.color} strokeWidth={2} dot={{ fill: widget.color, r: 3 }} />
             </LineChart>
           </ResponsiveContainer>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const SOURCES = [
   { v: 'daily', label: 'Métricas diárias' },
@@ -16,6 +16,8 @@ const FIELDS = {
   ],
   leads: [
     { v: 'leads', label: 'Quantidade de leads' },
+    { v: 'visits', label: 'Visitas' },
+    { v: 'conversion_rate', label: 'Conversão %' },
     { v: 'total_spent', label: 'Gasto total' },
     { v: 'cpl', label: 'CPL' }
   ],
@@ -43,10 +45,9 @@ const AGGS = [
 ];
 
 const SIZES = [1, 2, 3, 4, 6, 8, 12];
-
 const COLORS = ['#6d71f0', '#8a8ef5', '#c4c6ff', '#30d173', '#ffb84d', '#ff8078', '#a5a1b3'];
 
-export default function WidgetEditor({ initial, onSave, onClose, landingPages = [] }) {
+export default function WidgetEditor({ initial, onSave, onClose, landingPages = [], campaignNames = [] }) {
   const [w, setW] = useState(initial || {
     title: 'Novo widget',
     source: 'daily',
@@ -54,7 +55,8 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
     aggregation: 'sum',
     chart_type: 'line',
     color: '#6d71f0',
-    size: 6
+    size: 6,
+    campaign_filter: ''
   });
 
   function set(k, v) {
@@ -62,9 +64,12 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
     if (k === 'source') {
       next.field = FIELDS[v][0].v;
       next.landing_id = '';
+      next.campaign_filter = '';
     }
     setW(next);
   }
+
+  const activeCampaigns = campaignNames.filter(c => c.active);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -77,15 +82,6 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
           <label className="label">Título</label>
           <input className="input" value={w.title} onChange={e => set('title', e.target.value)} />
         </div>
-        {w.source === 'landing' && (
-          <div className="field">
-            <label className="label">Landing page</label>
-            <select className="select" value={w.landing_id || ''} onChange={e => set('landing_id', e.target.value ? Number(e.target.value) : '')}>
-              <option value="">Todas as landing pages</option>
-              {landingPages.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
-            </select>
-          </div>
-        )}
         <div className="grid-2">
           <div className="field">
             <label className="label">Fonte de dados</label>
@@ -100,6 +96,24 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
             </select>
           </div>
         </div>
+        {w.source === 'leads' && (
+          <div className="field">
+            <label className="label">Filtrar por campanha</label>
+            <select className="select" value={w.campaign_filter || ''} onChange={e => set('campaign_filter', e.target.value)}>
+              <option value="">Todas as campanhas</option>
+              {activeCampaigns.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
+        {w.source === 'landing' && (
+          <div className="field">
+            <label className="label">Landing page</label>
+            <select className="select" value={w.landing_id || ''} onChange={e => set('landing_id', e.target.value ? Number(e.target.value) : '')}>
+              <option value="">Todas as landing pages</option>
+              {landingPages.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+            </select>
+          </div>
+        )}
         <div className="grid-2">
           <div className="field">
             <label className="label">Tipo</label>
@@ -125,12 +139,7 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
             <label className="label">Cor</label>
             <div className="color-picker">
               {COLORS.map(c => (
-                <div
-                  key={c}
-                  className={`color-dot ${w.color === c ? 'selected' : ''}`}
-                  style={{ background: c }}
-                  onClick={() => set('color', c)}
-                />
+                <div key={c} className={`color-dot ${w.color === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => set('color', c)} />
               ))}
             </div>
           </div>
