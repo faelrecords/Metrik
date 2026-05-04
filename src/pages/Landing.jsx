@@ -33,6 +33,7 @@ export default function Landing({ readOnly = false }) {
   });
   const [activeGroup, setActiveGroup] = useState(() => localStorage.getItem('metrik_landing_active_group') || 'Todas');
   const importRef = useRef(null);
+  const importTargetRef = useRef(null);
 
   async function load() {
     const [p, t] = await Promise.all([api.get('/landing'), api.get('/tags')]);
@@ -253,7 +254,7 @@ export default function Landing({ readOnly = false }) {
         <div className="row-flex">
           <button className="btn" onClick={() => setFiltersOpen(true)}>Filtros</button>
           {!readOnly && <button className="btn" onClick={exportTemplate}>Template</button>}
-          {!readOnly && <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => importXLS(e.target.files?.[0])} />}
+          {!readOnly && <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => { importXLS(e.target.files?.[0], importTargetRef.current); importTargetRef.current = null; }} />}
           <button className="btn" onClick={exportXLS}>↓ Excel</button>
           {!readOnly && <button className="btn accent" onClick={() => open(null)}>+ Nova landing</button>}
         </div>
@@ -328,7 +329,7 @@ export default function Landing({ readOnly = false }) {
                   <strong className="text-secondary" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Registros</strong>
                   {!readOnly && (
                     <div className="row-flex">
-                      <button className="btn sm" onClick={() => importRef.current?.click()}>Importar</button>
+                      <button className="btn sm" onClick={() => { importTargetRef.current = activePage; importRef.current?.click(); }}>Importar</button>
                       <button className="btn sm" onClick={() => openEntry(activePage)}>+ Registro</button>
                     </div>
                   )}
