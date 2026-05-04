@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { today, fmtBR, addDays, ranges } from '../utils/dates.js';
 import DateRangePicker from '../components/DateRangePicker.jsx';
@@ -33,9 +33,6 @@ export default function Landing({ readOnly = false }) {
     catch { return ['Geral']; }
   });
   const [activeGroup, setActiveGroup] = useState(() => localStorage.getItem('metrik_landing_active_group') || 'Todas');
-  const importRef = useRef(null);
-  const importTargetRef = useRef(null);
-
   async function load() {
     const [p, t] = await Promise.all([api.get('/landing'), api.get('/tags')]);
     setPages(p);
@@ -194,14 +191,14 @@ export default function Landing({ readOnly = false }) {
 
   function openImportModal() {
     const defaultPage = activePage || pages[0] || null;
-    setImportModal({ pageId: defaultPage?.id ?? '' });
+    setImportModal({ pageId: defaultPage?.id ?? '', file: null });
   }
 
-  function startImport() {
+  async function runImport() {
     const page = pages.find(p => p.id === Number(importModal.pageId));
-    importTargetRef.current = page || null;
+    const file = importModal.file;
     setImportModal(null);
-    setTimeout(() => importRef.current?.click(), 50);
+    await importXLS(file, page || null);
   }
 
   function openTemplateModal() {
@@ -270,8 +267,6 @@ export default function Landing({ readOnly = false }) {
       alert(`Importados: ${ok}${fail ? ` · Falhas: ${fail}` : ''}`);
     } catch (e) {
       alert(e.message);
-    } finally {
-      if (importRef.current) importRef.current.value = '';
     }
   }
 
@@ -286,7 +281,6 @@ export default function Landing({ readOnly = false }) {
           <button className="btn" onClick={() => setFiltersOpen(true)}>Filtros</button>
           {!readOnly && <button className="btn" onClick={openTemplateModal}>Template</button>}
           {!readOnly && <button className="btn" onClick={openImportModal}>Importar</button>}
-          {!readOnly && <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => { importXLS(e.target.files?.[0], importTargetRef.current); importTargetRef.current = null; if (importRef.current) importRef.current.value = ''; }} />}
           <button className="btn" onClick={exportXLS}>↓ Excel</button>
           {!readOnly && <button className="btn accent" onClick={() => open(null)}>+ Nova landing</button>}
         </div>
@@ -552,13 +546,18 @@ export default function Landing({ readOnly = false }) {
                 {pages.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
               </select>
             </div>
+            <div className="field">
+              <label className="label">Arquivo (.xlsx / .csv)</label>
+              <input className="input" type="file" accept=".xlsx,.xls,.csv"
+                onChange={e => setImportModal(p => ({ ...p, file: e.target.files?.[0] || null }))} />
+            </div>
             <div className="hint" style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginBottom: 8 }}>
-              A planilha precisa ter as colunas: <strong>Data</strong>, <strong>Visitas</strong>, <strong>Leads</strong>
+              Colunas necessárias: <strong>Data</strong>, <strong>Visitas</strong>, <strong>Leads</strong>
             </div>
             <div className="modal-actions">
               <button className="btn ghost" onClick={() => setImportModal(null)}>Cancelar</button>
-              <button className="btn accent" disabled={!importModal.pageId} onClick={startImport}>
-                Selecionar arquivo →
+              <button className="btn accent" disabled={!importModal.pageId || !importModal.file} onClick={runImport}>
+                Importar
               </button>
             </div>
           </div>
