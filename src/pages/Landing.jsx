@@ -27,6 +27,7 @@ export default function Landing({ readOnly = false }) {
   const [bulkTagModal, setBulkTagModal] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [templateModal, setTemplateModal] = useState(null);
+  const [importModal, setImportModal] = useState(null);
   const [groups, setGroups] = useState(() => {
     try { return JSON.parse(localStorage.getItem('metrik_landing_groups') || '["Geral"]'); }
     catch { return ['Geral']; }
@@ -191,6 +192,18 @@ export default function Landing({ readOnly = false }) {
     XLSX.writeFile(wb, `${safeName}.xlsx`);
   }
 
+  function openImportModal() {
+    const defaultPage = activePage || pages[0] || null;
+    setImportModal({ pageId: defaultPage?.id ?? '' });
+  }
+
+  function startImport() {
+    const page = pages.find(p => p.id === Number(importModal.pageId));
+    importTargetRef.current = page || null;
+    setImportModal(null);
+    setTimeout(() => importRef.current?.click(), 50);
+  }
+
   function openTemplateModal() {
     const defaultPage = activePage || pages[0] || null;
     const from = addDays(today(), -6);
@@ -272,7 +285,8 @@ export default function Landing({ readOnly = false }) {
         <div className="row-flex">
           <button className="btn" onClick={() => setFiltersOpen(true)}>Filtros</button>
           {!readOnly && <button className="btn" onClick={openTemplateModal}>Template</button>}
-          {!readOnly && <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => { importXLS(e.target.files?.[0], importTargetRef.current); importTargetRef.current = null; }} />}
+          {!readOnly && <button className="btn" onClick={openImportModal}>Importar</button>}
+          {!readOnly && <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={e => { importXLS(e.target.files?.[0], importTargetRef.current); importTargetRef.current = null; if (importRef.current) importRef.current.value = ''; }} />}
           <button className="btn" onClick={exportXLS}>↓ Excel</button>
           {!readOnly && <button className="btn accent" onClick={() => open(null)}>+ Nova landing</button>}
         </div>
@@ -346,10 +360,7 @@ export default function Landing({ readOnly = false }) {
                 <div className="row-flex" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
                   <strong className="text-secondary" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Registros</strong>
                   {!readOnly && (
-                    <div className="row-flex">
-                      <button className="btn sm" onClick={() => { importTargetRef.current = activePage; importRef.current?.click(); }}>Importar</button>
-                      <button className="btn sm" onClick={() => openEntry(activePage)}>+ Registro</button>
-                    </div>
+                    <button className="btn sm" onClick={() => openEntry(activePage)}>+ Registro</button>
                   )}
                 </div>
                 {activePage.entries.length === 0 ? (
@@ -527,6 +538,33 @@ export default function Landing({ readOnly = false }) {
           </div>
         </div>
       )}
+      {importModal && (
+        <div className="modal-backdrop" onClick={() => setImportModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Importar registros</h2>
+              <button className="modal-close" onClick={() => setImportModal(null)}>×</button>
+            </div>
+            <div className="field">
+              <label className="label">Landing page de destino</label>
+              <select className="select" value={importModal.pageId} onChange={e => setImportModal(p => ({ ...p, pageId: Number(e.target.value) }))}>
+                <option value="">Selecione uma página</option>
+                {pages.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+              </select>
+            </div>
+            <div className="hint" style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginBottom: 8 }}>
+              A planilha precisa ter as colunas: <strong>Data</strong>, <strong>Visitas</strong>, <strong>Leads</strong>
+            </div>
+            <div className="modal-actions">
+              <button className="btn ghost" onClick={() => setImportModal(null)}>Cancelar</button>
+              <button className="btn accent" disabled={!importModal.pageId} onClick={startImport}>
+                Selecionar arquivo →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {templateModal && (
         <div className="modal-backdrop" onClick={() => setTemplateModal(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
