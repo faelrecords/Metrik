@@ -285,7 +285,7 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
           )}
         </div>
 
-        {w.chart_type !== 'pie' && (
+        {!['pie', 'donut', 'scoreboard', 'table', 'heatmap'].includes(w.chart_type) && (
           <div className="field">
             <label className="label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Cor dinâmica por meta</span>

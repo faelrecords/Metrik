@@ -271,18 +271,19 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
     const leads  = aggregateValue(filtered, widget.source === 'landing' ? 'totalLeads'  : 'leads',  'sum');
     const conv   = visits > 0 ? (leads / visits * 100) : 0;
     const leadsW = visits > 0 ? Math.max((leads / visits) * 100, 20) : 50;
+    const fColor = kpiColor(leads, widget);
     return (
       <div className={`widget size-${widget.size || 4}`}>
         <div className="widget-head"><div className="widget-title">{widget.title}</div>{actions}</div>
         <div style={{ padding: '8px 16px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: '100%', background: 'rgba(109,113,240,0.25)', borderRadius: 8, padding: '10px 16px', display: 'flex', justifyContent: 'space-between' }}>
+          <div style={{ width: '100%', background: `${fColor}22`, borderRadius: 8, padding: '10px 16px', display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 12, color: '#acadb1' }}>Visitas</span>
             <span style={{ fontWeight: 700 }}>{dataHidden ? '••••' : visits.toLocaleString('pt-BR')}</span>
           </div>
           <div style={{ color: '#acadb1', fontSize: 12 }}>▼ {dataHidden ? '•••' : conv.toFixed(1)}% conversão</div>
-          <div style={{ width: `${leadsW}%`, background: 'rgba(48,209,115,0.25)', borderRadius: 8, padding: '10px 16px', display: 'flex', justifyContent: 'space-between' }}>
+          <div style={{ width: `${leadsW}%`, background: `${fColor}33`, borderRadius: 8, padding: '10px 16px', display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 12, color: '#acadb1' }}>Leads</span>
-            <span style={{ fontWeight: 700, color: '#30d173' }}>{dataHidden ? '••••' : leads.toLocaleString('pt-BR')}</span>
+            <span style={{ fontWeight: 700, color: fColor }}>{dataHidden ? '••••' : leads.toLocaleString('pt-BR')}</span>
           </div>
         </div>
       </div>
@@ -322,7 +323,7 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
                 </span>
               </div>
               <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 4, height: 4 }}>
-                <div style={{ height: '100%', width: `${item.value / maxVal * 100}%`, background: widget.color || '#6d71f0', borderRadius: 4 }} />
+                <div style={{ height: '100%', width: `${item.value / maxVal * 100}%`, background: kpiColor(item.value, widget), borderRadius: 4 }} />
               </div>
             </div>
           ))}
@@ -598,7 +599,9 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
               <YAxis yAxisId="left" stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
               <YAxis yAxisId="right" orientation="right" stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
               {!dataHidden && <Tooltip {...TT} />}
-              <Bar yAxisId="left" dataKey="value" fill={widget.color || '#6d71f0'} radius={[4, 4, 0, 0]} name={FIELD_LABELS[widget.field] || widget.field} />
+              <Bar yAxisId="left" dataKey="value" radius={[4, 4, 0, 0]} name={FIELD_LABELS[widget.field] || widget.field}>
+                {chartData.map((entry, i) => <Cell key={i} fill={kpiColor(entry.value, widget)} />)}
+              </Bar>
               <Line yAxisId="right" type="monotone" dataKey="value2" stroke={widget.color2 || '#30d173'} strokeWidth={2} dot={false} name={FIELD_LABELS[widget.field2] || widget.field2} />
             </ComposedChart>
           </ResponsiveContainer>
