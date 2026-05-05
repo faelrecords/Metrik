@@ -17,6 +17,8 @@ export default function Landing({ readOnly = false }) {
   const [entry, setEntry] = useState(null);
   const [form, setForm] = useState({ title: '', url: '', tags: [] });
   const [entryForm, setEntryForm] = useState({ date: today(), visits: '', leads: '' });
+  const [editEntry, setEditEntry] = useState(null);
+  const [editEntryForm, setEditEntryForm] = useState({ date: '', visits: '', leads: '' });
   const [pendingDelete, setPendingDelete] = useState(null);
   const [selected, setSelected] = useState([]);
   const [bulkTags, setBulkTags] = useState([]);
@@ -92,6 +94,24 @@ export default function Landing({ readOnly = false }) {
   function delEntry(pid, eid) {
     if (canSkipDeleteConfirm()) delEntryNow(pid, eid);
     else setPendingDelete({ type: 'entry', pid, eid, message: 'Remover registro?' });
+  }
+
+  function openEditEntry(pid, e) {
+    setEditEntry({ pid, eid: e.id });
+    setEditEntryForm({ date: e.period_start, visits: String(e.visits), leads: String(e.leads) });
+  }
+
+  async function saveEditEntry() {
+    try {
+      await api.put(`/landing/${editEntry.pid}/entries/${editEntry.eid}`, {
+        period_start: editEntryForm.date,
+        period_end: editEntryForm.date,
+        visits: editEntryForm.visits,
+        leads: editEntryForm.leads
+      });
+      setEditEntry(null);
+      load();
+    } catch (e) { alert(e.message); }
   }
 
   const filtered = (tagFilter ? pages.filter(p => (p.tags || []).includes(tagFilter)) : pages).map(p => {
@@ -308,7 +328,10 @@ export default function Landing({ readOnly = false }) {
                           <td>{e.visits}</td>
                           <td>{e.leads}</td>
                           <td>{Number(e.conversion).toFixed(2)}%</td>
-                          {!readOnly && <td className="actions-cell"><button className="btn sm danger" onClick={() => delEntry(activePage.id, e.id)}>×</button></td>}
+                          {!readOnly && <td className="actions-cell">
+                            <button className="btn sm ghost" onClick={() => openEditEntry(activePage.id, e)}>✎</button>
+                            <button className="btn sm danger" onClick={() => delEntry(activePage.id, e.id)}>×</button>
+                          </td>}
                         </tr>
                       ))}
                     </tbody>
@@ -547,6 +570,38 @@ export default function Landing({ readOnly = false }) {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {editEntry && (
+        <div className="modal-backdrop">
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Editar registro</h2>
+              <button className="modal-close" onClick={() => setEditEntry(null)}>×</button>
+            </div>
+            <div className="field">
+              <label className="label">Data</label>
+              <input className="input" type="date" value={editEntryForm.date} onChange={e => setEditEntryForm({ ...editEntryForm, date: e.target.value })} />
+            </div>
+            <div className="grid-2">
+              <div className="field">
+                <label className="label">Total de visitas</label>
+                <input className="input" type="number" value={editEntryForm.visits} onChange={e => setEditEntryForm({ ...editEntryForm, visits: e.target.value })} />
+              </div>
+              <div className="field">
+                <label className="label">Leads gerados</label>
+                <input className="input" type="number" value={editEntryForm.leads} onChange={e => setEditEntryForm({ ...editEntryForm, leads: e.target.value })} />
+              </div>
+            </div>
+            <div className="hint">
+              Conversão: {Number(editEntryForm.visits) > 0 ? ((Number(editEntryForm.leads) / Number(editEntryForm.visits)) * 100).toFixed(2) : '0.00'}%
+            </div>
+            <div className="modal-actions">
+              <button className="btn ghost" onClick={() => setEditEntry(null)}>Cancelar</button>
+              <button className="btn accent" onClick={saveEditEntry}>Salvar</button>
+            </div>
           </div>
         </div>
       )}
