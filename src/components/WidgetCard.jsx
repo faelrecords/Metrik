@@ -16,7 +16,7 @@ function computeFiltered(source, landing_id, campaign_filter, dataLeads, dataLan
       for (const c of record.campaigns || []) {
         byDate[date].leads += Number(c.leads) || 0;
         byDate[date].visits += Number(c.visits) || 0;
-        byDate[date].total_spent += Number(c.total_spent) || 0;
+        byDate[date].total_spent += Number(c.total_spent) || ((Number(c.leads) || 0) * (Number(c.cpl) || 0));
       }
     }
     return Object.values(byDate).map(r => ({
