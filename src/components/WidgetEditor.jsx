@@ -33,7 +33,22 @@ const TYPES = [
   { v: 'line', label: 'Linha' },
   { v: 'bar', label: 'Barras' },
   { v: 'area', label: 'Área' },
-  { v: 'pie', label: 'Pizza' }
+  { v: 'pie', label: 'Pizza' },
+  { v: 'formula', label: 'Fórmula (2 métricas)' },
+  { v: 'compare', label: 'Comparação de período' }
+];
+
+const OPERATIONS = [
+  { v: '/', label: 'Divisão (M1 ÷ M2)' },
+  { v: '+', label: 'Soma (M1 + M2)' },
+  { v: '-', label: 'Diferença (M1 − M2)' },
+  { v: '*', label: 'Produto (M1 × M2)' }
+];
+
+const COMPARE_MODES = [
+  { v: 'prev_period', label: 'Período anterior (mesma duração)' },
+  { v: 'prev_month', label: 'Mesmo período, mês anterior' },
+  { v: 'prev_year', label: 'Mesmo período, ano anterior' }
 ];
 
 const AGGS = [
@@ -65,6 +80,16 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
       next.field = FIELDS[v][0].v;
       next.landing_id = '';
       next.campaign_filter = '';
+    }
+    if (k === 'source2') next.field2 = FIELDS[v][0].v;
+    if (k === 'chart_type' && v === 'formula') {
+      next.source2 = next.source2 || 'daily';
+      next.field2 = next.field2 || 'visits';
+      next.aggregation2 = next.aggregation2 || 'sum';
+      next.operation = next.operation || '/';
+    }
+    if (k === 'chart_type' && v === 'compare') {
+      next.compare_mode = next.compare_mode || 'prev_period';
     }
     setW(next);
   }
@@ -122,12 +147,55 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
             </select>
           </div>
           <div className="field">
-            <label className="label">Agregação (KPI)</label>
+            <label className="label">{w.chart_type === 'formula' ? 'Agregação (Métrica 1)' : 'Agregação (KPI)'}</label>
             <select className="select" value={w.aggregation} onChange={e => set('aggregation', e.target.value)}>
               {AGGS.map(a => <option key={a.v} value={a.v}>{a.label}</option>)}
             </select>
           </div>
         </div>
+
+        {w.chart_type === 'formula' && (
+          <>
+            <div className="field">
+              <label className="label">Operação</label>
+              <select className="select" value={w.operation || '/'} onChange={e => set('operation', e.target.value)}>
+                {OPERATIONS.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
+              </select>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 12 }}>
+              <div className="label" style={{ marginBottom: 8, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Métrica 2</div>
+              <div className="grid-2">
+                <div className="field" style={{ margin: 0 }}>
+                  <label className="label">Fonte</label>
+                  <select className="select" value={w.source2 || 'daily'} onChange={e => set('source2', e.target.value)}>
+                    {SOURCES.map(s => <option key={s.v} value={s.v}>{s.label}</option>)}
+                  </select>
+                </div>
+                <div className="field" style={{ margin: 0 }}>
+                  <label className="label">Campo</label>
+                  <select className="select" value={w.field2 || 'visits'} onChange={e => set('field2', e.target.value)}>
+                    {FIELDS[w.source2 || 'daily'].map(f => <option key={f.v} value={f.v}>{f.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="field" style={{ marginTop: 8, marginBottom: 0 }}>
+                <label className="label">Agregação</label>
+                <select className="select" value={w.aggregation2 || 'sum'} onChange={e => set('aggregation2', e.target.value)}>
+                  {AGGS.map(a => <option key={a.v} value={a.v}>{a.label}</option>)}
+                </select>
+              </div>
+            </div>
+          </>
+        )}
+
+        {w.chart_type === 'compare' && (
+          <div className="field">
+            <label className="label">Comparar com</label>
+            <select className="select" value={w.compare_mode || 'prev_period'} onChange={e => set('compare_mode', e.target.value)}>
+              {COMPARE_MODES.map(m => <option key={m.v} value={m.v}>{m.label}</option>)}
+            </select>
+          </div>
+        )}
         <div className="grid-2">
           <div className="field">
             <label className="label">Tamanho (colunas / 12)</label>

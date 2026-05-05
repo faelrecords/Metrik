@@ -1,9 +1,79 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { api } from '../api.js';
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, AreaChart, Area,
   PieChart, Pie, Cell, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine
 } from 'recharts';
 import { fmtBRShort } from '../utils/dates.js';
+
+function computeFiltered(source, landing_id, campaign_filter, dataLeads, dataLanding) {
+  if (source === 'daily') {
+    const byDate = {};
+    for (const record of dataLeads) {
+      const date = record.period_start;
+      if (!byDate[date]) byDate[date] = { date, leads: 0, visits: 0, total_spent: 0 };
+      for (const c of record.campaigns || []) {
+        byDate[date].leads += Number(c.leads) || 0;
+        byDate[date].visits += Number(c.visits) || 0;
+        byDate[date].total_spent += Number(c.total_spent) || 0;
+      }
+    }
+    return Object.values(byDate).map(r => ({
+      ...r,
+      cpl: r.leads > 0 ? r.total_spent / r.leads : 0,
+      conversion_rate: r.visits > 0 ? (r.leads / r.visits) * 100 : 0,
+    })).sort((a, b) => a.date.localeCompare(b.date));
+  }
+  if (source === 'leads') {
+    const arr = [];
+    for (const r of dataLeads) {
+      for (const c of r.campaigns || []) {
+        if (campaign_filter && c.name !== campaign_filter) continue;
+        arr.push({
+          name: c.name, leads: Number(c.leads) || 0, visits: Number(c.visits) || 0,
+          conversion_rate: Number(c.conversion_rate) || 0, cpl: Number(c.cpl) || 0,
+          total_spent: Number(c.total_spent) || ((Number(c.leads) || 0) * (Number(c.cpl) || 0)),
+          period: r.period_start
+        });
+      }
+    }
+    return arr;
+  }
+  if (source === 'landing') {
+    const rows = landing_id ? dataLanding.filter(p => Number(p.id) === Number(landing_id)) : dataLanding;
+    return rows.map(p => {
+      const entries = Array.isArray(p.entries) ? p.entries : [];
+      const totalVisits = entries.reduce((s, e) => s + (Number(e.visits) || 0), 0);
+      const totalLeads = entries.reduce((s, e) => s + (Number(e.leads) || 0), 0);
+      return { ...p, totalVisits, totalLeads, conversion: totalVisits > 0 ? (totalLeads / totalVisits) * 100 : 0 };
+    });
+  }
+  return [];
+}
+
+function shiftDate(dateStr, days) {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function getPrevRange(from, to, mode) {
+  if (mode === 'prev_month') {
+    const f = new Date(from + 'T12:00:00'); f.setMonth(f.getMonth() - 1);
+    const t = new Date(to + 'T12:00:00'); t.setMonth(t.getMonth() - 1);
+    return [f.toISOString().slice(0, 10), t.toISOString().slice(0, 10)];
+  }
+  if (mode === 'prev_year') {
+    const yr = s => s.replace(/^\d{4}/, y => String(Number(y) - 1));
+    return [yr(from), yr(to)];
+  }
+  const days = Math.round((new Date(to + 'T12:00:00') - new Date(from + 'T12:00:00')) / 86400000) + 1;
+  const pTo = shiftDate(from, -1);
+  return [shiftDate(pTo, -(days - 1)), pTo];
+}
+
+const COMPARE_LABELS = { prev_period: 'período anterior', prev_month: 'mês anterior', prev_year: 'ano anterior' };
+const OP_LABELS = { '+': '+', '-': '−', '*': '×', '/': '÷' };
 
 const COLORS = ['#6d71f0', '#8a8ef5', '#c4c6ff', '#a5a1b3', '#30d173', '#ffb84d', '#ff8078'];
 const AXIS_COLOR = '#acadb1';
@@ -59,60 +129,38 @@ function EyeIcon({ hidden }) {
 
 const TOOLTIP_STYLE = { background: 'rgba(20,20,21,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e8e7ec' };
 
-export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, onEdit, onDelete }) {
+export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, onEdit, onDelete }) {
   const [dataHidden, setDataHidden] = useState(false);
+  const [prevLeads, setPrevLeads] = useState([]);
+  const [prevLanding, setPrevLanding] = useState([]);
 
-  const filtered = useMemo(() => {
-    if (widget.source === 'daily') {
-      // aggregate from leads (same logic as Diário page)
-      const byDate = {};
-      for (const record of dataLeads) {
-        const date = record.period_start;
-        if (!byDate[date]) byDate[date] = { date, leads: 0, visits: 0, total_spent: 0 };
-        for (const c of record.campaigns || []) {
-          byDate[date].leads += Number(c.leads) || 0;
-          byDate[date].visits += Number(c.visits) || 0;
-          byDate[date].total_spent += Number(c.total_spent) || 0;
-        }
-      }
-      return Object.values(byDate).map(r => ({
-        ...r,
-        cpl: r.leads > 0 ? r.total_spent / r.leads : 0,
-        conversion_rate: r.visits > 0 ? (r.leads / r.visits) * 100 : 0,
-      })).sort((a, b) => a.date.localeCompare(b.date));
-    }
-    if (widget.source === 'leads') {
-      const arr = [];
-      for (const r of dataLeads) {
-        for (const c of r.campaigns || []) {
-          // apply campaign filter if set
-          if (widget.campaign_filter && c.name !== widget.campaign_filter) continue;
-          arr.push({
-            name: c.name,
-            leads: c.leads || 0,
-            visits: c.visits || 0,
-            conversion_rate: c.conversion_rate || 0,
-            cpl: c.cpl || 0,
-            total_spent: Number(c.total_spent) || ((Number(c.leads) || 0) * (Number(c.cpl) || 0)),
-            period: r.period_start
-          });
-        }
-      }
-      return arr;
-    }
-    if (widget.source === 'landing') {
-      const landingRows = widget.landing_id
-        ? dataLanding.filter(p => Number(p.id) === Number(widget.landing_id))
-        : dataLanding;
-      return landingRows.map(p => {
-        const entries = Array.isArray(p.entries) ? p.entries : [];
-        const totalVisits = entries.reduce((s, e) => s + (Number(e.visits) || 0), 0);
-        const totalLeads = entries.reduce((s, e) => s + (Number(e.leads) || 0), 0);
-        return { ...p, totalVisits, totalLeads, conversion: totalVisits > 0 ? (totalLeads / totalVisits) * 100 : 0 };
-      });
-    }
-    return [];
-  }, [widget.source, widget.landing_id, widget.campaign_filter, dataDaily, dataLeads, dataLanding]);
+  const filtered = useMemo(() =>
+    computeFiltered(widget.source, widget.landing_id, widget.campaign_filter, dataLeads, dataLanding),
+    [widget.source, widget.landing_id, widget.campaign_filter, dataLeads, dataLanding]
+  );
+
+  const filtered2 = useMemo(() => {
+    if (widget.chart_type !== 'formula') return [];
+    return computeFiltered(widget.source2 || 'daily', widget.landing_id, '', dataLeads, dataLanding);
+  }, [widget.chart_type, widget.source2, dataLeads, dataLanding]);
+
+  useEffect(() => {
+    if (widget.chart_type !== 'compare' || !dateRange?.from || !dateRange?.to) return;
+    const [pFrom, pTo] = getPrevRange(dateRange.from, dateRange.to, widget.compare_mode || 'prev_period');
+    const params = new URLSearchParams({ from: pFrom, to: pTo });
+    Promise.all([
+      api.get(`/leads?${params}`),
+      widget.source === 'landing' ? api.get('/landing') : Promise.resolve([])
+    ]).then(([leads, land]) => {
+      setPrevLeads(leads);
+      if (land.length) setPrevLanding(land);
+    }).catch(() => {});
+  }, [widget.chart_type, widget.compare_mode, widget.source, dateRange?.from, dateRange?.to]);
+
+  const filteredPrev = useMemo(() =>
+    computeFiltered(widget.source, widget.landing_id, widget.campaign_filter, prevLeads, prevLanding),
+    [widget.source, widget.landing_id, widget.campaign_filter, prevLeads, prevLanding]
+  );
 
   const actions = (
     <div className="widget-actions">
@@ -123,6 +171,75 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
       {onDelete && <button onClick={onDelete}>×</button>}
     </div>
   );
+
+  // Formula widget: combina duas métricas com uma operação
+  if (widget.chart_type === 'formula') {
+    const val1 = aggregateValue(filtered, widget.field, widget.aggregation || 'sum');
+    const val2 = aggregateValue(filtered2, widget.field2 || widget.field, widget.aggregation2 || 'sum');
+    const op = widget.operation || '/';
+    const result = op === '+' ? val1 + val2 : op === '-' ? val1 - val2 : op === '*' ? val1 * val2 : val2 !== 0 ? val1 / val2 : 0;
+    const color = kpiColor(result, widget);
+    const goal = widget.dynamic_color && widget.goal_value !== '' && widget.goal_value != null ? Number(widget.goal_value) : null;
+    return (
+      <div className={`widget size-${widget.size || 3}`}>
+        <div className="widget-head"><div className="widget-title">{widget.title}</div>{actions}</div>
+        <div className="widget-kpi">
+          <div className={`value ${dataHidden ? 'masked-value' : ''}`} style={{ color }}>
+            {dataHidden ? '••••' : fmt(result, '')}
+          </div>
+          <div className="label">{fmt(val1, widget.field)} {OP_LABELS[op]} {fmt(val2, widget.field2)} = resultado</div>
+          {goal != null && !dataHidden && (
+            <div style={{ marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,0.35)', display: 'flex', gap: 6 }}>
+              <span>Meta: {fmt(goal, '')}</span>
+              <span style={{ color, fontWeight: 600 }}>{result < goal ? '▼ abaixo' : result > goal ? '▲ acima' : '● na meta'}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Compare widget: mesmo campo, dois períodos
+  if (widget.chart_type === 'compare') {
+    const current = aggregateValue(filtered, widget.field, widget.aggregation || 'sum');
+    const previous = aggregateValue(filteredPrev, widget.field, widget.aggregation || 'sum');
+    const pct = previous !== 0 ? ((current - previous) / Math.abs(previous)) * 100 : null;
+    const color = kpiColor(current, widget);
+    const trendColor = pct == null ? '#acadb1' : pct > 0 ? '#30d173' : pct < 0 ? '#ff8078' : '#acadb1';
+    const goal = widget.dynamic_color && widget.goal_value !== '' && widget.goal_value != null ? Number(widget.goal_value) : null;
+    return (
+      <div className={`widget size-${widget.size || 3}`}>
+        <div className="widget-head">
+          <div className="widget-title">
+            {widget.title}
+            {widget.campaign_filter && <span className="text-tertiary" style={{ fontSize: 11, marginLeft: 6 }}>· {widget.campaign_filter}</span>}
+          </div>
+          {actions}
+        </div>
+        <div className="widget-kpi">
+          <div className={`value ${dataHidden ? 'masked-value' : ''}`} style={{ color }}>
+            {dataHidden ? '••••' : fmt(current, widget.field)}
+          </div>
+          {!dataHidden && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+              <span className="label">vs {COMPARE_LABELS[widget.compare_mode || 'prev_period']}: {fmt(previous, widget.field)}</span>
+              {pct != null && (
+                <span style={{ color: trendColor, fontWeight: 700, fontSize: 13 }}>
+                  {pct > 0 ? '▲' : pct < 0 ? '▼' : '●'} {Math.abs(pct).toFixed(1)}%
+                </span>
+              )}
+            </div>
+          )}
+          {goal != null && !dataHidden && (
+            <div style={{ marginTop: 4, fontSize: 11, color: 'rgba(255,255,255,0.35)', display: 'flex', gap: 6 }}>
+              <span>Meta: {fmt(goal, widget.field)}</span>
+              <span style={{ color, fontWeight: 600 }}>{current < goal ? '▼ abaixo' : current > goal ? '▲ acima' : '● na meta'}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // KPI mode
   if (widget.chart_type === 'kpi') {

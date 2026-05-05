@@ -15,7 +15,6 @@ export default function Dashboard({ user }) {
   const [dashboards, setDashboards] = useState([]);
   const [activeDashboard, setActiveDashboard] = useState(null);
   const [widgets, setWidgets] = useState([]);
-  const [daily, setDaily] = useState([]);
   const [leads, setLeads] = useState([]);
   const [landing, setLanding] = useState([]);
   const [campaignNames, setCampaignNames] = useState([]);
@@ -141,6 +140,27 @@ export default function Dashboard({ user }) {
     else if (mode === 'duplicate') await duplicateDashboardNow(name);
   }
 
+  const PRESETS = [
+    { title: 'Gasto total', source: 'daily', field: 'total_spent', aggregation: 'sum', chart_type: 'kpi', color: '#6d71f0', size: 3 },
+    { title: 'CPL médio', source: 'daily', field: 'cpl', aggregation: 'avg', chart_type: 'kpi', color: '#8a8ef5', size: 3 },
+    { title: 'Evolução do CPL', source: 'daily', field: 'cpl', aggregation: 'avg', chart_type: 'line', color: '#8a8ef5', size: 6 },
+    { title: 'Conversão média das LPs', source: 'landing', field: 'conversion', aggregation: 'avg', chart_type: 'kpi', color: '#30d173', size: 3 },
+    { title: 'Leads por landing page', source: 'landing', field: 'totalLeads', aggregation: 'sum', chart_type: 'bar', color: '#6d71f0', size: 6 },
+    { title: 'Visitas por landing page', source: 'landing', field: 'totalVisits', aggregation: 'sum', chart_type: 'pie', color: '#6d71f0', size: 6 },
+    { title: 'Leads por campanha', source: 'leads', field: 'leads', aggregation: 'sum', chart_type: 'bar', color: '#c4c6ff', size: 6 },
+    { title: 'Gasto por campanha', source: 'leads', field: 'total_spent', aggregation: 'sum', chart_type: 'pie', color: '#ffb84d', size: 6 },
+    { title: 'Conversão diária', source: 'daily', field: 'conversion_rate', aggregation: 'avg', chart_type: 'area', color: '#30d173', size: 6 },
+    { title: 'Leads acumulados', source: 'daily', field: 'leads', aggregation: 'sum', chart_type: 'area', color: '#6d71f0', size: 6 },
+  ];
+
+  async function addPresets() {
+    if (!activeDashboard) return;
+    for (const preset of PRESETS) {
+      await api.post('/widgets', { ...preset, dashboard_id: activeDashboard.id });
+    }
+    loadData();
+  }
+
   async function exportPDF() {
     const { default: html2canvas } = await import('html2canvas');
     const { default: jsPDF } = await import('jspdf');
@@ -168,6 +188,7 @@ export default function Dashboard({ user }) {
           {!readOnly && <button className="btn danger" onClick={deleteDashboard} disabled={dashboards.length <= 1}>Excluir página</button>}
           <button className="btn" onClick={exportPDF}>↓ PDF</button>
           {!readOnly && <button className="btn" onClick={createDashboard}>+ Tab</button>}
+          {!readOnly && <button className="btn" onClick={addPresets} disabled={!activeDashboard}>★ Sugeridos</button>}
           {!readOnly && <button className="btn accent" onClick={() => setShowNew(true)}>+ Widget</button>}
         </div>
       </div>
@@ -197,9 +218,9 @@ export default function Dashboard({ user }) {
               <WidgetCard
                 key={w.id}
                 widget={w}
-                dataDaily={daily}
                 dataLeads={leads}
                 dataLanding={landing}
+                dateRange={range}
                 onEdit={readOnly ? null : () => setEditing(w)}
                 onDelete={readOnly ? null : () => deleteWidget(w.id)}
               />
