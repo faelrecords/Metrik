@@ -448,12 +448,16 @@ input, button, select, textarea { font-family: inherit; font-size: inherit; colo
   border: 1px solid var(--border);
   border-radius: var(--glass-radius-sm);
   background: var(--glass-bg);
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 .month-grid {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(4, auto);
+  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
   gap: 6px;
+  min-width: 0;
 }
 .landing-control-row {
   display: flex;
@@ -476,8 +480,10 @@ input, button, select, textarea { font-family: inherit; font-size: inherit; colo
 
 .filter-drawer {
   width: min(420px, 100vw);
+  max-width: 100vw;
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   background: var(--glass-bg-strong);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -485,6 +491,8 @@ input, button, select, textarea { font-family: inherit; font-size: inherit; colo
   box-shadow: -18px 0 42px rgba(0, 0, 0, 0.45);
   padding: 22px;
 }
+
+.filter-drawer * { max-width: 100%; }
 
 .drawer-head {
   display: flex;

@@ -254,6 +254,30 @@ export default function Leads({ readOnly = false }) {
     }
   });
 
+  const campaignTotals = {};
+  rows.forEach(r => {
+    (r.campaigns || []).forEach(c => {
+      const name = c.name || 'Sem campanha';
+      if (!campaignTotals[name]) campaignTotals[name] = { name, leads: 0, visits: 0, total_spent: 0 };
+      campaignTotals[name].leads += Number(c.leads) || 0;
+      campaignTotals[name].visits += Number(c.visits) || 0;
+      campaignTotals[name].total_spent += Number(c.total_spent) || ((Number(c.leads) || 0) * (Number(c.cpl) || 0));
+    });
+  });
+  const summaryRows = Object.values(campaignTotals).map(r => ({
+    ...r,
+    conversion_rate: r.visits > 0 ? (r.leads / r.visits) * 100 : 0,
+    cpl: r.leads > 0 ? r.total_spent / r.leads : 0
+  })).sort((a, b) => b.leads - a.leads);
+  const summaryTotal = summaryRows.reduce((acc, r) => ({
+    name: 'Total do período',
+    leads: acc.leads + r.leads,
+    visits: acc.visits + r.visits,
+    total_spent: acc.total_spent + r.total_spent
+  }), { name: 'Total do período', leads: 0, visits: 0, total_spent: 0 });
+  summaryTotal.conversion_rate = summaryTotal.visits > 0 ? (summaryTotal.leads / summaryTotal.visits) * 100 : 0;
+  summaryTotal.cpl = summaryTotal.leads > 0 ? summaryTotal.total_spent / summaryTotal.leads : 0;
+
   return (
     <div>
       <div className="page-header">
@@ -278,6 +302,27 @@ export default function Leads({ readOnly = false }) {
           <TagSelector value={bulkTags} onChange={setBulkTags} />
           <button className="btn accent" onClick={applyBulkTags} disabled={bulkTags.length === 0}>Aplicar tags</button>
           <button className="btn ghost" onClick={() => setSelected([])}>Limpar</button>
+        </div>
+      )}
+
+      {rows.length > 0 && (
+        <div className="glass" style={{ padding: 0, overflow: 'hidden', marginBottom: 16 }}>
+          <div className="table-title">Resumo do filtro</div>
+          <table className="table">
+            <thead><tr><th>Campanha</th><th>Leads</th><th>Alcance</th><th>Conversão</th><th>Total gasto</th><th>CPL</th></tr></thead>
+            <tbody>
+              {[...summaryRows, summaryTotal].map((r, i) => (
+                <tr key={r.name} style={i === summaryRows.length ? { borderTop: '2px solid rgba(255,255,255,0.1)', fontWeight: 700 } : {}}>
+                  <td>{r.name}</td>
+                  <td>{r.leads}</td>
+                  <td>{r.visits}</td>
+                  <td>{r.conversion_rate.toFixed(1)}%</td>
+                  <td>R$ {r.total_spent.toFixed(2)}</td>
+                  <td>R$ {r.cpl.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
