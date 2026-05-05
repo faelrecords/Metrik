@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+﻿import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../api.js';
 import { ranges } from '../utils/dates.js';
 import DateRangePicker from '../components/DateRangePicker.jsx';
@@ -246,7 +246,7 @@ export default function Dashboard({ user }) {
         />
       )}
       {dashModal && (
-        <div className="modal-backdrop" onClick={() => setDashModal(null)}>
+        <div className="modal-backdrop">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>

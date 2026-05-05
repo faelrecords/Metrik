@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import DeleteConfirm from '../components/DeleteConfirm.jsx';
 import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
@@ -81,7 +81,7 @@ export default function LLMKeys() {
       </div>
 
       {show && (
-        <div className="modal-backdrop" onClick={() => setShow(false)}>
+        <div className="modal-backdrop">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Nova chave de LLM</h2>

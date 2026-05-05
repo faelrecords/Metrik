@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { today, fmtBR, addDays, ranges } from '../utils/dates.js';
 import DateRangePicker from '../components/DateRangePicker.jsx';
@@ -321,7 +321,7 @@ export default function Landing({ readOnly = false }) {
       )}
 
       {showNew && (
-        <div className="modal-backdrop" onClick={() => setShowNew(false)}>
+        <div className="modal-backdrop">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editing ? 'Editar landing' : 'Nova landing'}</h2>
@@ -348,7 +348,7 @@ export default function Landing({ readOnly = false }) {
       )}
 
       {entry && (
-        <div className="modal-backdrop" onClick={() => setEntry(null)}>
+        <div className="modal-backdrop">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Novo registro · {entry.title}</h2>
@@ -403,7 +403,7 @@ export default function Landing({ readOnly = false }) {
         </div>
       )}
       {groupModal && (
-        <div className="modal-backdrop" onClick={() => setGroupModal(null)}>
+        <div className="modal-backdrop">
           <div className="modal small" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{groupModal.mode === 'create' ? 'Novo grupo' : 'Escolher grupo'}</h2>
@@ -454,7 +454,7 @@ export default function Landing({ readOnly = false }) {
         </div>
       )}
       {bulkTagModal && (
-        <div className="modal-backdrop" onClick={() => setBulkTagModal(false)}>
+        <div className="modal-backdrop">
           <div className="modal small" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Aplicar tags</h2>
@@ -472,7 +472,7 @@ export default function Landing({ readOnly = false }) {
         </div>
       )}
       {lbModal && (
-        <div className="modal-backdrop" onClick={() => setLbModal(null)}>
+        <div className="modal-backdrop">
           <div className="modal" onClick={e => e.stopPropagation()}>
             {lbModal.phase === 'config' ? (
               <>

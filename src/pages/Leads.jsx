@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { today, ranges, fmtBR } from '../utils/dates.js';
 import DateRangePicker from '../components/DateRangePicker.jsx';
@@ -344,7 +344,7 @@ export default function Leads({ readOnly = false }) {
       </div>
 
       {show && (
-        <div className="modal-backdrop" onClick={() => setShow(false)}>
+        <div className="modal-backdrop">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editing ? 'Editar relatório' : 'Novo relatório'}</h2>
@@ -430,7 +430,7 @@ export default function Leads({ readOnly = false }) {
       )}
 
       {bulkModal && (
-        <div className="modal-backdrop" onClick={() => setBulkModal(null)}>
+        <div className="modal-backdrop">
           <div className="modal" onClick={e => e.stopPropagation()}>
             {bulkModal.phase === 'config' ? (
               <>

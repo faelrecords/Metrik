@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import DeleteConfirm from '../components/DeleteConfirm.jsx';
 import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
@@ -104,7 +104,7 @@ export default function Tags() {
       </div>
 
       {show && (
-        <div className="modal-backdrop" onClick={() => setShow(false)}>
+        <div className="modal-backdrop">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editing ? 'Editar tag' : 'Nova tag'}</h2>
@@ -131,7 +131,7 @@ export default function Tags() {
         </div>
       )}
       {showBulk && (
-        <div className="modal-backdrop" onClick={() => setShowBulk(false)}>
+        <div className="modal-backdrop">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Tags em massa</h2>

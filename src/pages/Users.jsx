@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { fmtBR } from '../utils/dates.js';
 import DeleteConfirm from '../components/DeleteConfirm.jsx';
@@ -78,7 +78,7 @@ export default function Users({ user }) {
       </div>
 
       {show && (
-        <div className="modal-backdrop" onClick={() => setShow(false)}>
+        <div className="modal-backdrop">
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editing ? 'Editar usuário' : 'Novo usuário'}</h2>

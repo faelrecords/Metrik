@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { skipDeleteConfirm } from '../utils/confirmDelete.js';
 
 export default function DeleteConfirm({ message, onCancel, onConfirm }) {
@@ -11,7 +11,7 @@ export default function DeleteConfirm({ message, onCancel, onConfirm }) {
   }
 
   return (
-    <div className="modal-backdrop" onClick={onCancel}>
+    <div className="modal-backdrop">
       <div className="modal confirm-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Confirmar exclusão</h2>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 
 const SOURCES = [
   { v: 'daily', label: 'Métricas diárias' },
@@ -110,7 +110,7 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
   const activeCampaigns = campaignNames.filter(c => c.active);
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop">
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{initial ? 'Editar widget' : 'Novo widget'}</h2>
