@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { iso, ranges } from '../utils/dates.js';
+import { fmtBRShort, iso, ranges, weeksOfMonth } from '../utils/dates.js';
 
 const PRESET = [
   { key: 'all', label: 'Todos' },
@@ -20,7 +20,9 @@ const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', '
 export default function DateRangePicker({ value, onChange }) {
   const [custom, setCustom] = useState(false);
   const [monthOpen, setMonthOpen] = useState(false);
+  const [weekOpen, setWeekOpen] = useState(false);
   const [year, setYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
 
   function pickMonth(month) {
     const from = iso(new Date(year, month, 1));
@@ -29,6 +31,15 @@ export default function DateRangePicker({ value, onChange }) {
     setMonthOpen(false);
     onChange({ from, to, preset: 'month_select', label: `${MONTHS[month]} ${year}` });
   }
+
+  function pickWeek(week) {
+    setCustom(false);
+    setMonthOpen(false);
+    setWeekOpen(false);
+    onChange({ from: week.from, to: week.to, preset: 'week_select', label: `${MONTHS[selectedMonth]} ${year} · ${week.label}` });
+  }
+
+  const weeks = weeksOfMonth(year, selectedMonth);
 
   return (
     <div className="row-flex">
@@ -46,8 +57,12 @@ export default function DateRangePicker({ value, onChange }) {
         >Personalizado</button>
         <button
           className={`range-pill ${monthOpen || value.preset === 'month_select' ? 'active' : ''}`}
-          onClick={() => { setCustom(false); setMonthOpen(v => !v); }}
+          onClick={() => { setCustom(false); setWeekOpen(false); setMonthOpen(v => !v); }}
         >Selecionar mês</button>
+        <button
+          className={`range-pill ${weekOpen || value.preset === 'week_select' ? 'active' : ''}`}
+          onClick={() => { setCustom(false); setMonthOpen(false); setWeekOpen(v => !v); }}
+        >Selecionar semana</button>
       </div>
       {monthOpen && (
         <div className="month-picker">
@@ -56,7 +71,24 @@ export default function DateRangePicker({ value, onChange }) {
           <button className="btn sm ghost" onClick={() => setYear(y => y + 1)}>›</button>
           <div className="month-grid">
             {MONTHS.map((m, i) => (
-              <button key={m} className="range-pill" onClick={() => pickMonth(i)}>{m}</button>
+              <button key={m} className="range-pill" onClick={() => { setSelectedMonth(i); pickMonth(i); }}>{m}</button>
+            ))}
+          </div>
+        </div>
+      )}
+      {weekOpen && (
+        <div className="month-picker">
+          <button className="btn sm ghost" onClick={() => setYear(y => y - 1)}>‹</button>
+          <strong>{MONTHS[selectedMonth]} {year}</strong>
+          <button className="btn sm ghost" onClick={() => setYear(y => y + 1)}>›</button>
+          <div className="month-grid">
+            {MONTHS.map((m, i) => (
+              <button key={m} className={`range-pill ${selectedMonth === i ? 'active' : ''}`} onClick={() => setSelectedMonth(i)}>{m}</button>
+            ))}
+          </div>
+          <div className="month-grid">
+            {weeks.map(w => (
+              <button key={w.from} className="range-pill" onClick={() => pickWeek(w)}>{w.label} · {fmtBRShort(w.from)}-{fmtBRShort(w.to)}</button>
             ))}
           </div>
         </div>

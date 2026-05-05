@@ -75,20 +75,15 @@ export const ranges = {
   }
 };
 
-// Semanas do mês: divide em blocos de 7 dias começando na segunda
 export function weeksOfMonth(year, month) {
   const first = new Date(year, month, 1);
   const last = new Date(year, month + 1, 0);
   const weeks = [];
   let cur = new Date(first);
   while (cur <= last) {
-    const dow = cur.getDay() || 7; // 1=seg .. 7=dom
     const start = new Date(cur);
-    if (weeks.length === 0 && dow !== 1) {
-      // primeira semana parcial
-    }
     const end = new Date(cur);
-    end.setDate(end.getDate() + (7 - dow));
+    end.setDate(end.getDate() + (6 - end.getDay()));
     if (end > last) end.setTime(last.getTime());
     weeks.push({
       label: `Semana ${weeks.length + 1}`,
