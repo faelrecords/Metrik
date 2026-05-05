@@ -63,7 +63,24 @@ export default function WidgetCard({ widget, dataDaily, dataLeads, dataLanding, 
   const [dataHidden, setDataHidden] = useState(false);
 
   const filtered = useMemo(() => {
-    if (widget.source === 'daily') return dataDaily;
+    if (widget.source === 'daily') {
+      // aggregate from leads (same logic as Diário page)
+      const byDate = {};
+      for (const record of dataLeads) {
+        const date = record.period_start;
+        if (!byDate[date]) byDate[date] = { date, leads: 0, visits: 0, total_spent: 0 };
+        for (const c of record.campaigns || []) {
+          byDate[date].leads += Number(c.leads) || 0;
+          byDate[date].visits += Number(c.visits) || 0;
+          byDate[date].total_spent += Number(c.total_spent) || 0;
+        }
+      }
+      return Object.values(byDate).map(r => ({
+        ...r,
+        cpl: r.leads > 0 ? r.total_spent / r.leads : 0,
+        conversion_rate: r.visits > 0 ? (r.leads / r.visits) * 100 : 0,
+      })).sort((a, b) => a.date.localeCompare(b.date));
+    }
     if (widget.source === 'leads') {
       const arr = [];
       for (const r of dataLeads) {

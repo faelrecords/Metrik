@@ -40,14 +40,12 @@ export default function Dashboard({ user }) {
     const list = dashboards.length ? dashboards : await loadDashboards();
     const dash = activeDashboard || list[0];
     if (!dash) return;
-    const [d, l, lp, ws, cn] = await Promise.all([
-      api.get(`/daily?${params}`),
+    const [l, lp, ws, cn] = await Promise.all([
       api.get(`/leads?${params}`),
       api.get('/landing'),
       api.get(`/widgets?dashboard_id=${dash.id}`),
       api.get('/campaign_names')
     ]);
-    setDaily(d);
     setLeads(l);
     setLanding(lp);
     setWidgets(ws);
