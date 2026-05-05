@@ -129,6 +129,9 @@ function EyeIcon({ hidden }) {
 }
 
 const TOOLTIP_STYLE = { background: 'rgba(20,20,21,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#e8e7ec' };
+const TOOLTIP_ITEM  = { color: '#e8e7ec' };
+const TOOLTIP_LABEL = { color: '#acadb1', fontWeight: 600 };
+const TT = { contentStyle: TOOLTIP_STYLE, itemStyle: TOOLTIP_ITEM, labelStyle: TOOLTIP_LABEL };
 
 export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, onEdit, onDelete }) {
   const [dataHidden, setDataHidden] = useState(false);
@@ -567,7 +570,7 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
               <Pie data={chartData} dataKey="value" nameKey="name" outerRadius={80} label={dataHidden ? false : PIE_LABEL}>
                 {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
-              {!dataHidden && <Tooltip contentStyle={TOOLTIP_STYLE} />}
+              {!dataHidden && <Tooltip {...TT} />}
             </PieChart>
           </ResponsiveContainer>
         ) : widget.chart_type === 'donut' ? (
@@ -577,7 +580,7 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
                 <Pie data={chartData} dataKey="value" nameKey="name" outerRadius={90} innerRadius={56}>
                   {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
-                {!dataHidden && <Tooltip contentStyle={TOOLTIP_STYLE} />}
+                {!dataHidden && <Tooltip {...TT} />}
               </PieChart>
             </ResponsiveContainer>
             {!dataHidden && (
@@ -594,7 +597,7 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
               <XAxis dataKey="name" stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
               <YAxis yAxisId="left" stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
               <YAxis yAxisId="right" orientation="right" stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
-              {!dataHidden && <Tooltip contentStyle={TOOLTIP_STYLE} />}
+              {!dataHidden && <Tooltip {...TT} />}
               <Bar yAxisId="left" dataKey="value" fill={widget.color || '#6d71f0'} radius={[4, 4, 0, 0]} name={FIELD_LABELS[widget.field] || widget.field} />
               <Line yAxisId="right" type="monotone" dataKey="value2" stroke={widget.color2 || '#30d173'} strokeWidth={2} dot={false} name={FIELD_LABELS[widget.field2] || widget.field2} />
             </ComposedChart>
@@ -605,7 +608,7 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="name" stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
               <YAxis stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
-              {!dataHidden && <Tooltip contentStyle={TOOLTIP_STYLE} />}
+              {!dataHidden && <Tooltip {...TT} />}
               {widget.dynamic_color && widget.goal_value != null && widget.goal_value !== '' && (
                 <ReferenceLine y={Number(widget.goal_value)} stroke={widget.color_on || '#ffb84d'} strokeDasharray="4 3" />
               )}
@@ -631,7 +634,7 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="name" stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
                 <YAxis stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
-                {!dataHidden && <Tooltip contentStyle={TOOLTIP_STYLE} />}
+                {!dataHidden && <Tooltip {...TT} />}
                 {widget.dynamic_color && widget.goal_value != null && widget.goal_value !== '' && (
                   <ReferenceLine y={Number(widget.goal_value)} stroke={widget.color_on || '#ffb84d'} strokeDasharray="4 3" />
                 )}
@@ -648,7 +651,7 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="name" stroke={AXIS_COLOR} tick={CHART_TEXT} fontSize={11} />
                 <YAxis stroke={AXIS_COLOR} tick={dataHidden ? false : CHART_TEXT} fontSize={11} />
-                {!dataHidden && <Tooltip contentStyle={TOOLTIP_STYLE} />}
+                {!dataHidden && <Tooltip {...TT} />}
                 {widget.dynamic_color && widget.goal_value != null && widget.goal_value !== '' && (
                   <ReferenceLine y={Number(widget.goal_value)} stroke={widget.color_on || '#ffb84d'} strokeDasharray="4 3" />
                 )}
