@@ -10,6 +10,7 @@ import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
 import Pagination from '../components/Pagination.jsx';
 
 const newCampaign = () => ({ name: '', leads: '', visits: '', total_spent: '', cpl: '' });
+const pct = v => `${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 
 export default function Leads({ readOnly = false }) {
   const [range, setRange] = useState({ ...ranges['30d'](), preset: '30d' });
@@ -140,7 +141,7 @@ export default function Leads({ readOnly = false }) {
           Campanha: c.name,
           Leads: c.leads,
           Alcance: c.visits || 0,
-          'Conversão (%)': (c.conversion_rate || 0).toFixed(1),
+          'Conversão (%)': Number(c.conversion_rate || 0).toFixed(2),
           'Total gasto': Number(c.total_spent) || (c.leads || 0) * (c.cpl || 0),
           CPL: c.cpl,
         });
@@ -316,7 +317,7 @@ export default function Leads({ readOnly = false }) {
                   <td>{r.name}</td>
                   <td>{r.leads}</td>
                   <td>{r.visits}</td>
-                  <td>{r.conversion_rate.toFixed(1)}%</td>
+                  <td>{pct(r.conversion_rate)}</td>
                   <td>R$ {r.total_spent.toFixed(2)}</td>
                   <td>R$ {r.cpl.toFixed(2)}</td>
                 </tr>
@@ -358,7 +359,7 @@ export default function Leads({ readOnly = false }) {
                   <td>{c?.name || '—'}</td>
                   <td>{c?.leads ?? 0}</td>
                   <td>{c?.visits ?? 0}</td>
-                  <td>{(c?.conversion_rate || 0).toFixed(1)}%</td>
+                  <td>{pct(c?.conversion_rate)}</td>
                   <td>R$ {(Number(c?.total_spent) || (Number(c?.leads || 0) * Number(c?.cpl || 0))).toFixed(2)}</td>
                   <td>R$ {Number(c?.cpl || 0).toFixed(2)}</td>
                   <td>
@@ -443,7 +444,7 @@ export default function Leads({ readOnly = false }) {
                   </div>
                   {(Number(c.visits) > 0 && Number(c.leads) > 0) && (
                     <div className="text-tertiary" style={{ fontSize: 12, marginTop: 4 }}>
-                      Conversão: <strong>{((Number(c.leads) / Number(c.visits)) * 100).toFixed(1)}%</strong>
+                      Conversão: <strong>{pct((Number(c.leads) / Number(c.visits)) * 100)}</strong>
                     </div>
                   )}
                 </div>
@@ -544,7 +545,7 @@ export default function Leads({ readOnly = false }) {
                 </div>
                 {Number(bulkModal.visits) > 0 && Number(bulkModal.leads) > 0 && (
                   <div className="text-tertiary" style={{ fontSize: 12, marginBottom: 8 }}>
-                    Conversão: <strong>{((Number(bulkModal.leads) / Number(bulkModal.visits)) * 100).toFixed(1)}%</strong>
+                    Conversão: <strong>{pct((Number(bulkModal.leads) / Number(bulkModal.visits)) * 100)}</strong>
                   </div>
                 )}
                 <div className="modal-actions">

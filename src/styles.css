@@ -312,6 +312,14 @@ input, button, select, textarea { font-family: inherit; font-size: inherit; colo
 .table tbody tr { transition: background 0.15s ease; }
 .table tbody tr:hover { background: rgba(255,255,255,0.025); }
 .table .actions-cell { text-align: right; white-space: nowrap; }
+.table-title {
+  padding: 18px 16px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
 
 /* spreadsheet input style */
 .sheet {
