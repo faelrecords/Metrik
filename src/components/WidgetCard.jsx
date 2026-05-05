@@ -137,11 +137,17 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
   const [dataHidden, setDataHidden] = useState(false);
   const [prevLeads, setPrevLeads] = useState([]);
   const [prevLanding, setPrevLanding] = useState([]);
+  const [manualLeads1, setManualLeads1] = useState([]);
+  const [manualLanding1, setManualLanding1] = useState([]);
 
-  const filtered = useMemo(() =>
-    computeFiltered(widget.source, widget.landing_id, widget.campaign_filter, dataLeads, dataLanding),
-    [widget.source, widget.landing_id, widget.campaign_filter, dataLeads, dataLanding]
-  );
+  const isManual = widget.chart_type === 'compare' && widget.compare_mode === 'manual';
+
+  const filtered = useMemo(() => {
+    if (isManual && widget.manual_from1 && manualLeads1.length >= 0) {
+      return computeFiltered(widget.source, widget.landing_id, widget.campaign_filter, manualLeads1, manualLanding1);
+    }
+    return computeFiltered(widget.source, widget.landing_id, widget.campaign_filter, dataLeads, dataLanding);
+  }, [isManual, widget.source, widget.landing_id, widget.campaign_filter, dataLeads, dataLanding, manualLeads1, manualLanding1]);
 
   const filtered2 = useMemo(() => {
     if (widget.chart_type !== 'formula') return [];
@@ -149,7 +155,33 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
   }, [widget.chart_type, widget.source2, dataLeads, dataLanding]);
 
   useEffect(() => {
-    if (widget.chart_type !== 'compare' || !dateRange?.from || !dateRange?.to) return;
+    if (widget.chart_type !== 'compare') return;
+    if (widget.compare_mode === 'manual') {
+      // Busca período 1 manual
+      if (widget.manual_from1 && widget.manual_to1) {
+        const p1 = new URLSearchParams({ from: widget.manual_from1, to: widget.manual_to1 });
+        Promise.all([
+          api.get(`/leads?${p1}`),
+          widget.source === 'landing' ? api.get('/landing') : Promise.resolve([])
+        ]).then(([leads, land]) => {
+          setManualLeads1(leads);
+          if (land.length) setManualLanding1(land);
+        }).catch(() => {});
+      }
+      // Busca período 2 manual
+      if (widget.manual_from2 && widget.manual_to2) {
+        const p2 = new URLSearchParams({ from: widget.manual_from2, to: widget.manual_to2 });
+        Promise.all([
+          api.get(`/leads?${p2}`),
+          widget.source === 'landing' ? api.get('/landing') : Promise.resolve([])
+        ]).then(([leads, land]) => {
+          setPrevLeads(leads);
+          if (land.length) setPrevLanding(land);
+        }).catch(() => {});
+      }
+      return;
+    }
+    if (!dateRange?.from || !dateRange?.to) return;
     const [pFrom, pTo] = getPrevRange(dateRange.from, dateRange.to, widget.compare_mode || 'prev_period');
     const params = new URLSearchParams({ from: pFrom, to: pTo });
     Promise.all([
@@ -159,7 +191,7 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
       setPrevLeads(leads);
       if (land.length) setPrevLanding(land);
     }).catch(() => {});
-  }, [widget.chart_type, widget.compare_mode, widget.source, dateRange?.from, dateRange?.to]);
+  }, [widget.chart_type, widget.compare_mode, widget.source, widget.manual_from1, widget.manual_to1, widget.manual_from2, widget.manual_to2, dateRange?.from, dateRange?.to]);
 
   const filteredPrev = useMemo(() =>
     computeFiltered(widget.source, widget.landing_id, widget.campaign_filter, prevLeads, prevLanding),
@@ -226,7 +258,12 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
           </div>
           {!dataHidden && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-              <span className="label">vs {COMPARE_LABELS[widget.compare_mode || 'prev_period']}: {fmt(previous, widget.field)}</span>
+              <span className="label">
+                vs {widget.compare_mode === 'manual'
+                  ? `${widget.manual_from2 || '?'} → ${widget.manual_to2 || '?'}`
+                  : COMPARE_LABELS[widget.compare_mode || 'prev_period']}
+                : {fmt(previous, widget.field)}
+              </span>
               {pct != null && (
                 <span style={{ color: trendColor, fontWeight: 700, fontSize: 13 }}>
                   {pct > 0 ? '▲' : pct < 0 ? '▼' : '●'} {Math.abs(pct).toFixed(1)}%

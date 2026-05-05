@@ -61,7 +61,8 @@ const OPERATIONS = [
 const COMPARE_MODES = [
   { v: 'prev_period', label: 'Período anterior (mesma duração)' },
   { v: 'prev_month', label: 'Mesmo período, mês anterior' },
-  { v: 'prev_year', label: 'Mesmo período, ano anterior' }
+  { v: 'prev_year', label: 'Mesmo período, ano anterior' },
+  { v: 'manual', label: 'Datas manuais' }
 ];
 
 const AGGS = [
@@ -202,12 +203,44 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
         )}
 
         {w.chart_type === 'compare' && (
-          <div className="field">
-            <label className="label">Comparar com</label>
-            <select className="select" value={w.compare_mode || 'prev_period'} onChange={e => set('compare_mode', e.target.value)}>
-              {COMPARE_MODES.map(m => <option key={m.v} value={m.v}>{m.label}</option>)}
-            </select>
-          </div>
+          <>
+            <div className="field">
+              <label className="label">Comparar com</label>
+              <select className="select" value={w.compare_mode || 'prev_period'} onChange={e => set('compare_mode', e.target.value)}>
+                {COMPARE_MODES.map(m => <option key={m.v} value={m.v}>{m.label}</option>)}
+              </select>
+            </div>
+            {w.compare_mode === 'manual' && (
+              <>
+                <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 12, marginBottom: 4 }}>
+                  <div className="label" style={{ marginBottom: 8, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Período atual (Referência)</div>
+                  <div className="grid-2">
+                    <div className="field" style={{ margin: 0 }}>
+                      <label className="label">De</label>
+                      <input className="input" type="date" value={w.manual_from1 || ''} onChange={e => set('manual_from1', e.target.value)} />
+                    </div>
+                    <div className="field" style={{ margin: 0 }}>
+                      <label className="label">Até</label>
+                      <input className="input" type="date" value={w.manual_to1 || ''} onChange={e => set('manual_to1', e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 12 }}>
+                  <div className="label" style={{ marginBottom: 8, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Período de comparação</div>
+                  <div className="grid-2">
+                    <div className="field" style={{ margin: 0 }}>
+                      <label className="label">De</label>
+                      <input className="input" type="date" value={w.manual_from2 || ''} onChange={e => set('manual_from2', e.target.value)} />
+                    </div>
+                    <div className="field" style={{ margin: 0 }}>
+                      <label className="label">Até</label>
+                      <input className="input" type="date" value={w.manual_to2 || ''} onChange={e => set('manual_to2', e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </>
         )}
 
         {(w.chart_type === 'progress' || w.chart_type === 'gauge') && (
