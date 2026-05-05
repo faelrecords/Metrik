@@ -83,7 +83,7 @@ export function weeksOfMonth(year, month) {
   while (cur <= last) {
     const start = new Date(cur);
     const end = new Date(cur);
-    end.setDate(end.getDate() + (6 - end.getDay()));
+    end.setDate(end.getDate() + (7 - (end.getDay() || 7)));
     if (end > last) end.setTime(last.getTime());
     weeks.push({
       label: `Semana ${weeks.length + 1}`,
