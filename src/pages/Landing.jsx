@@ -1,7 +1,8 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { today, fmtBR, addDays, ranges } from '../utils/dates.js';
 import DateRangePicker from '../components/DateRangePicker.jsx';
+import FilterPresets from '../components/FilterPresets.jsx';
 import TagSelector, { TagFilter, TagChip } from '../components/TagSelector.jsx';
 import DeleteConfirm from '../components/DeleteConfirm.jsx';
 import { canSkipDeleteConfirm } from '../utils/confirmDelete.js';
@@ -197,7 +198,7 @@ export default function Landing({ readOnly = false }) {
       p.entries.forEach(e => {
         rows.push({
           Data: fmtBR(e.period_start),
-          Visitas: e.visits,
+          Alcance: e.visits,
           Leads: e.leads
         });
       });
@@ -235,7 +236,7 @@ export default function Landing({ readOnly = false }) {
       <div className="page-header">
         <div>
           <h1>Landing pages</h1>
-          <div className="subtitle">Cadastro, registros de visitas/leads e taxa de conversão</div>
+          <div className="subtitle">Cadastro, registros de Alcance/leads e taxa de conversão</div>
         </div>
         <div className="row-flex">
           <button className="btn" onClick={() => setFiltersOpen(true)}>Filtros</button>
@@ -296,7 +297,7 @@ export default function Landing({ readOnly = false }) {
               </div>
               <div className="grid-3 mt-2">
                 <div className="glass-sm" style={{ textAlign: 'center', padding: 14 }}>
-                  <div className="text-tertiary" style={{ fontSize: 11, textTransform: 'uppercase' }}>Visitas</div>
+                  <div className="text-tertiary" style={{ fontSize: 11, textTransform: 'uppercase' }}>Alcance</div>
                   <div style={{ fontSize: 22, fontWeight: 700 }}>{activePage.totalVisits.toLocaleString('pt-BR')}</div>
                 </div>
                 <div className="glass-sm" style={{ textAlign: 'center', padding: 14 }}>
@@ -320,7 +321,7 @@ export default function Landing({ readOnly = false }) {
                   <div className="text-tertiary" style={{ fontSize: 12, padding: 8 }}>Sem registros ainda.</div>
                 ) : (
                   <table className="table">
-                    <thead><tr><th>Período</th><th>Visitas</th><th>Leads</th><th>Conv.</th>{!readOnly && <th></th>}</tr></thead>
+                    <thead><tr><th>Período</th><th>Alcance</th><th>Leads</th><th>Conv.</th>{!readOnly && <th></th>}</tr></thead>
                     <tbody>
                       {activePage.entries.slice().reverse().map(e => (
                         <tr key={e.id}>
@@ -383,7 +384,7 @@ export default function Landing({ readOnly = false }) {
             </div>
             <div className="grid-2">
               <div className="field">
-                <label className="label">Total de visitas</label>
+                <label className="label">Total de Alcance</label>
                 <input className="input" type="number" value={entryForm.visits} onChange={e => setEntryForm({ ...entryForm, visits: e.target.value })} />
               </div>
               <div className="field">
@@ -411,6 +412,7 @@ export default function Landing({ readOnly = false }) {
             <div className="drawer-section">
               <div className="label">Período</div>
               <DateRangePicker value={range} onChange={setRange} />
+              <FilterPresets onApply={setRange} />
             </div>
             <div className="drawer-section">
               <div className="label">Tags</div>
@@ -545,7 +547,7 @@ export default function Landing({ readOnly = false }) {
                 </div>
                 <div className="grid-2">
                   <div className="field">
-                    <label className="label">Visitas</label>
+                    <label className="label">Alcance</label>
                     <input className="input" type="number" value={lbModal.visits} autoFocus
                       onChange={e => setLbModal(p => ({ ...p, visits: e.target.value }))}
                       onKeyDown={e => { if (e.key === 'Enter') landingBulkNext(); }} />
@@ -587,7 +589,7 @@ export default function Landing({ readOnly = false }) {
             </div>
             <div className="grid-2">
               <div className="field">
-                <label className="label">Total de visitas</label>
+                <label className="label">Total de Alcance</label>
                 <input className="input" type="number" value={editEntryForm.visits} onChange={e => setEditEntryForm({ ...editEntryForm, visits: e.target.value })} />
               </div>
               <div className="field">
@@ -618,3 +620,4 @@ export default function Landing({ readOnly = false }) {
     </div>
   );
 }
+

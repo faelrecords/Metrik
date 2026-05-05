@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 
 const SOURCES = [
   { v: 'daily', label: 'Métricas diárias' },
@@ -11,18 +11,18 @@ const FIELDS = {
     { v: 'leads', label: 'Leads' },
     { v: 'cpl', label: 'CPL' },
     { v: 'total_spent', label: 'Gasto total' },
-    { v: 'visits', label: 'Visitas' },
+    { v: 'visits', label: 'Alcance' },
     { v: 'conversion_rate', label: 'Conversão %' }
   ],
   leads: [
     { v: 'leads', label: 'Quantidade de leads' },
-    { v: 'visits', label: 'Visitas' },
+    { v: 'visits', label: 'Alcance' },
     { v: 'conversion_rate', label: 'Conversão %' },
     { v: 'total_spent', label: 'Gasto total' },
     { v: 'cpl', label: 'CPL' }
   ],
   landing: [
-    { v: 'totalVisits', label: 'Visitas' },
+    { v: 'totalVisits', label: 'Alcance' },
     { v: 'totalLeads', label: 'Leads' },
     { v: 'conversion', label: 'Conversão %' }
   ]
@@ -283,7 +283,7 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
 
         {['funnel', 'scoreboard', 'heatmap'].includes(w.chart_type) && (
           <div className="hint" style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
-            {w.chart_type === 'funnel' && 'Campos usados automaticamente: Visitas e Leads da fonte selecionada.'}
+            {w.chart_type === 'funnel' && 'Campos usados automaticamente: Alcance e Leads da fonte selecionada.'}
             {w.chart_type === 'scoreboard' && 'Exibe todas as métricas principais da fonte selecionada em um único card.'}
             {w.chart_type === 'heatmap' && 'Grade de dias colorida por intensidade do campo selecionado. Funciona melhor com tamanho 12.'}
           </div>
@@ -373,3 +373,4 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
     </div>
   );
 }
+

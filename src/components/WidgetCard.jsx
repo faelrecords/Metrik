@@ -109,8 +109,8 @@ function fmt(n, field) {
 }
 
 const FIELD_LABELS = {
-  leads: 'Leads', cpl: 'CPL', total_spent: 'Gasto', visits: 'Visitas',
-  conversion_rate: 'Conversão', totalVisits: 'Visitas', totalLeads: 'Leads', conversion: 'Conversão'
+  leads: 'Leads', cpl: 'CPL', total_spent: 'Gasto', visits: 'Alcance',
+  conversion_rate: 'Conversão', totalVisits: 'Alcance', totalLeads: 'Leads', conversion: 'Conversão'
 };
 
 function EyeIcon({ hidden }) {
@@ -297,7 +297,7 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
         <div className="widget-head"><div className="widget-title">{widget.title}</div>{actions}</div>
         <div style={{ padding: '8px 16px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
           <div style={{ width: '100%', background: `${fColor}22`, borderRadius: 8, padding: '10px 16px', display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12, color: '#acadb1' }}>Visitas</span>
+            <span style={{ fontSize: 12, color: '#acadb1' }}>Alcance</span>
             <span style={{ fontWeight: 700 }}>{dataHidden ? '••••' : visits.toLocaleString('pt-BR')}</span>
           </div>
           <div style={{ color: '#acadb1', fontSize: 12 }}>▼ {dataHidden ? '•••' : conv.toFixed(1)}% conversão</div>
@@ -408,8 +408,8 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
   // ── Scoreboard (múltiplos KPIs) ──────────────────────────────────────────────
   if (widget.chart_type === 'scoreboard') {
     const metrics = widget.source === 'landing'
-      ? [{ f: 'totalVisits', l: 'Visitas' }, { f: 'totalLeads', l: 'Leads' }, { f: 'conversion', l: 'Conversão' }]
-      : [{ f: 'leads', l: 'Leads' }, { f: 'visits', l: 'Visitas' }, { f: 'total_spent', l: 'Gasto' }, { f: 'cpl', l: 'CPL médio', agg: 'avg' }, { f: 'conversion_rate', l: 'Conv. %', agg: 'avg' }];
+      ? [{ f: 'totalVisits', l: 'Alcance' }, { f: 'totalLeads', l: 'Leads' }, { f: 'conversion', l: 'Conversão' }]
+      : [{ f: 'leads', l: 'Leads' }, { f: 'visits', l: 'Alcance' }, { f: 'total_spent', l: 'Gasto' }, { f: 'cpl', l: 'CPL médio', agg: 'avg' }, { f: 'conversion_rate', l: 'Conv. %', agg: 'avg' }];
     return (
       <div className={`widget size-${widget.size || 6}`}>
         <div className="widget-head"><div className="widget-title">{widget.title}</div>{actions}</div>
@@ -430,10 +430,10 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
     const limit = widget.table_limit || 10;
     let cols = [], rows = [];
     if (widget.source === 'daily') {
-      cols = ['Data', 'Leads', 'Visitas', 'Conv%', 'CPL', 'Gasto'];
+      cols = ['Data', 'Leads', 'Alcance', 'Conv%', 'CPL', 'Gasto'];
       rows = [...filtered].reverse().slice(0, limit).map(r => [fmtBRShort(r.date), r.leads, r.visits, r.conversion_rate.toFixed(1) + '%', fmt(r.cpl, 'cpl'), fmt(r.total_spent, 'total_spent')]);
     } else if (widget.source === 'leads') {
-      cols = ['Campanha', 'Leads', 'Visitas', 'CPL', 'Gasto'];
+      cols = ['Campanha', 'Leads', 'Alcance', 'CPL', 'Gasto'];
       const byName = {};
       filtered.forEach(c => {
         if (!byName[c.name]) byName[c.name] = { ...c };
@@ -441,7 +441,7 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
       });
       rows = Object.values(byName).sort((a, b) => b.leads - a.leads).slice(0, limit).map(r => [r.name, r.leads, r.visits, fmt(r.cpl, 'cpl'), fmt(r.total_spent, 'total_spent')]);
     } else {
-      cols = ['Página', 'Visitas', 'Leads', 'Conv%'];
+      cols = ['Página', 'Alcance', 'Leads', 'Conv%'];
       rows = [...filtered].sort((a, b) => b.totalLeads - a.totalLeads).slice(0, limit).map(p => [p.title, p.totalVisits, p.totalLeads, p.conversion.toFixed(1) + '%']);
     }
     return (
@@ -687,3 +687,4 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
     </div>
   );
 }
+

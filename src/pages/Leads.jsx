@@ -1,7 +1,8 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { today, ranges, fmtBR } from '../utils/dates.js';
 import DateRangePicker from '../components/DateRangePicker.jsx';
+import FilterPresets from '../components/FilterPresets.jsx';
 import TagSelector, { TagFilter, TagChip } from '../components/TagSelector.jsx';
 import { ensureTagIds, firstSheetRows, num, parseDate, readWorkbook, splitTags, writeTemplate } from '../utils/spreadsheet.js';
 import DeleteConfirm from '../components/DeleteConfirm.jsx';
@@ -138,7 +139,7 @@ export default function Leads({ readOnly = false }) {
           Data: fmtBR(r.period_start),
           Campanha: c.name,
           Leads: c.leads,
-          Visitas: c.visits || 0,
+          Alcance: c.visits || 0,
           'Conversão (%)': (c.conversion_rate || 0).toFixed(1),
           'Total gasto': Number(c.total_spent) || (c.leads || 0) * (c.cpl || 0),
           CPL: c.cpl,
@@ -156,7 +157,7 @@ export default function Leads({ readOnly = false }) {
       Data: today(),
       Campanha: 'Meta Ads - Conversão',
       Leads: 100,
-      Visitas: 500,
+      Alcance: 500,
       'Total gasto': 1250,
       CPL: 12.5,
       Tags: 'Campanha'
@@ -180,7 +181,7 @@ export default function Leads({ readOnly = false }) {
           groups.set(key, { period_start, period_end, tags: splitTags(row.Tags), campaigns: [] });
         }
         const leads = num(row.Leads);
-        const visits = num(row.Visitas || row.visitas || 0);
+        const visits = num(row.Alcance || row.alcance || row.Visitas || row.visitas || 0);
         const totalSpent = num(row['Total gasto'] || row.Gasto || row.Custo);
         const cpl = num(row.CPL) || (totalSpent && leads ? totalSpent / leads : 0);
         const conversion_rate = visits > 0 ? (leads / visits) * 100 : 0;
@@ -294,7 +295,7 @@ export default function Leads({ readOnly = false }) {
                 <th>Data</th>
                 <th>Campanha</th>
                 <th>Leads</th>
-                <th>Visitas</th>
+                <th>Alcance</th>
                 <th>Conversão</th>
                 <th>Total gasto</th>
                 <th>CPL</th>
@@ -381,7 +382,7 @@ export default function Leads({ readOnly = false }) {
                       <input className="input" type="number" value={c.leads} onChange={e => setCampaign(i, 'leads', e.target.value)} />
                     </div>
                     <div className="field">
-                      <label className="label">Visitas</label>
+                      <label className="label">Alcance</label>
                       <input className="input" type="number" value={c.visits || ''} onChange={e => setCampaign(i, 'visits', e.target.value)} placeholder="0" />
                     </div>
                   </div>
@@ -482,7 +483,7 @@ export default function Leads({ readOnly = false }) {
                     <input className="input" type="number" value={bulkModal.leads} onChange={e => bulkSetField('leads', e.target.value)} autoFocus />
                   </div>
                   <div className="field">
-                    <label className="label">Visitas</label>
+                    <label className="label">Alcance</label>
                     <input className="input" type="number" value={bulkModal.visits} onChange={e => bulkSetField('visits', e.target.value)} />
                   </div>
                 </div>
@@ -523,6 +524,7 @@ export default function Leads({ readOnly = false }) {
             <div className="drawer-section">
               <div className="label">Período</div>
               <DateRangePicker value={range} onChange={setRange} />
+              <FilterPresets onApply={setRange} />
             </div>
             <div className="drawer-section">
               <div className="label">Tags</div>
@@ -543,3 +545,4 @@ export default function Leads({ readOnly = false }) {
     </div>
   );
 }
+

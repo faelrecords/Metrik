@@ -272,6 +272,75 @@ function CampaignsSection() {
   );
 }
 
+function FilterPresetsSection() {
+  const [rows, setRows] = useState([]);
+  const [show, setShow] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [form, setForm] = useState({ name: '', from: '', to: '', active: true });
+
+  async function load() { setRows(await api.get('/filter_presets')); }
+  useEffect(() => { load(); }, []);
+
+  function open(row) {
+    setEditing(row || null);
+    setForm(row ? { name: row.name, from: row.from, to: row.to, active: row.active !== false } : { name: '', from: '', to: '', active: true });
+    setShow(true);
+  }
+  async function save() {
+    try {
+      if (editing) await api.put(`/filter_presets/${editing.id}`, form);
+      else await api.post('/filter_presets', form);
+      setShow(false); setEditing(null); load();
+    } catch (e) { alert(e.message); }
+  }
+  async function delNow(id) { await api.del(`/filter_presets/${id}`); setPendingDelete(null); load(); }
+  function del(id) {
+    if (canSkipDeleteConfirm()) delNow(id);
+    else setPendingDelete({ id, message: 'Remover filtro predefinido?' });
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        <div>
+          <h2 style={{ marginBottom: 2 }}>Filtros predefinidos</h2>
+          <div className="subtitle">Períodos personalizados para usar nos painéis de filtro</div>
+        </div>
+        <button className="btn accent" onClick={() => open(null)}>+ Novo filtro</button>
+      </div>
+      <div className="glass" style={{ padding: 0, overflow: 'hidden' }}>
+        {rows.length === 0 ? <div className="empty-state"><h3>Nenhum filtro criado</h3></div> : (
+          <table className="table">
+            <thead><tr><th>Nome</th><th>Início</th><th>Fim</th><th>Status</th><th></th></tr></thead>
+            <tbody>{rows.map(r => (
+              <tr key={r.id}>
+                <td>{r.name}</td><td>{r.from}</td><td>{r.to}</td><td>{r.active !== false ? 'Ativo' : 'Inativo'}</td>
+                <td className="actions-cell"><button className="btn sm ghost" onClick={() => open(r)}>Editar</button><button className="btn sm danger" onClick={() => del(r.id)}>×</button></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        )}
+      </div>
+      {show && (
+        <div className="modal-backdrop">
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header"><h2>{editing ? 'Editar filtro' : 'Novo filtro'}</h2><button className="modal-close" onClick={() => setShow(false)}>×</button></div>
+            <div className="field"><label className="label">Nome</label><input className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} autoFocus /></div>
+            <div className="grid-2">
+              <div className="field"><label className="label">Início</label><input className="input" type="date" value={form.from} onChange={e => setForm({ ...form, from: e.target.value })} /></div>
+              <div className="field"><label className="label">Fim</label><input className="input" type="date" value={form.to} onChange={e => setForm({ ...form, to: e.target.value })} /></div>
+            </div>
+            <div className="field"><label className="label">Status</label><button className={`range-pill ${form.active ? 'active' : ''}`} onClick={() => setForm({ ...form, active: !form.active })}>{form.active ? 'Ativo' : 'Inativo'}</button></div>
+            <div className="modal-actions"><button className="btn ghost" onClick={() => setShow(false)}>Cancelar</button><button className="btn accent" onClick={save}>Salvar</button></div>
+          </div>
+        </div>
+      )}
+      {pendingDelete && <DeleteConfirm message={pendingDelete.message} onCancel={() => setPendingDelete(null)} onConfirm={() => delNow(pendingDelete.id)} />}
+    </div>
+  );
+}
+
 // ─── Settings page ────────────────────────────────────────────────────────────
 export default function Settings() {
   return (
@@ -283,6 +352,7 @@ export default function Settings() {
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+        <FilterPresetsSection />
         <CampaignsSection />
         <TagsSection />
       </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { ranges, fmtBR } from '../utils/dates.js';
 import DateRangePicker from '../components/DateRangePicker.jsx';
+import FilterPresets from '../components/FilterPresets.jsx';
 import { TagFilter, TagChip } from '../components/TagSelector.jsx';
 import Pagination from '../components/Pagination.jsx';
 
@@ -13,10 +14,10 @@ function aggregateLeads(leadsRows, tags, tagFilter) {
     for (const tagId of recordTags) {
       if (tagFilter && tagId !== tagFilter) continue;
       const key = `${date}|${tagId ?? 'none'}`;
-      if (!byKey[key]) byKey[key] = { date, tagId, leads: 0, visits: 0, total_spent: 0 };
+      if (!byKey[key]) byKey[key] = { date, tagId, leads: 0, reach: 0, total_spent: 0 };
       for (const c of record.campaigns || []) {
         byKey[key].leads += Number(c.leads) || 0;
-        byKey[key].visits += Number(c.visits) || 0;
+        byKey[key].reach += Number(c.visits ?? c.reach) || 0;
         byKey[key].total_spent += Number(c.total_spent) || 0;
       }
     }
@@ -24,7 +25,7 @@ function aggregateLeads(leadsRows, tags, tagFilter) {
   return Object.values(byKey).map(r => ({
     ...r,
     cpl: r.leads > 0 ? r.total_spent / r.leads : 0,
-    conversion_rate: r.visits > 0 ? (r.leads / r.visits) * 100 : 0,
+    conversion_rate: r.reach > 0 ? (r.leads / r.reach) * 100 : 0,
     tag: tags.find(t => t.id === r.tagId) || null
   })).sort((a, b) => b.date.localeCompare(a.date));
 }
@@ -58,7 +59,7 @@ export default function Daily() {
       Data: fmtBR(r.date),
       Tag: r.tag?.name || '(sem tag)',
       Leads: r.leads,
-      Visitas: r.visits,
+      Alcance: r.reach,
       'Conversão %': r.conversion_rate.toFixed(2),
       'Gasto total': r.total_spent.toFixed(2),
       CPL: r.cpl.toFixed(2)
@@ -77,7 +78,7 @@ export default function Daily() {
     pdf.text(`Métricas diárias · ${fmtBR(range.from)} → ${fmtBR(range.to)}`, 14, y);
     y += 10;
     pdf.setFontSize(9);
-    const headers = ['Data', 'Tag', 'Leads', 'Visitas', 'Conv%', 'Gasto', 'CPL'];
+    const headers = ['Data', 'Tag', 'Leads', 'Alcance', 'Conv%', 'Gasto', 'CPL'];
     const cw = [22, 34, 18, 18, 16, 28, 24];
     let x = 14;
     headers.forEach((h, i) => { pdf.text(h, x, y); x += cw[i]; });
@@ -90,7 +91,7 @@ export default function Daily() {
         fmtBR(r.date),
         r.tag?.name || '(sem tag)',
         String(r.leads),
-        String(r.visits),
+        String(r.reach),
         r.conversion_rate.toFixed(1) + '%',
         'R$' + r.total_spent.toFixed(2),
         'R$' + r.cpl.toFixed(2)
@@ -128,7 +129,7 @@ export default function Daily() {
                 <th>Data</th>
                 <th>Tag</th>
                 <th>Leads</th>
-                <th>Visitas</th>
+                <th>Alcance</th>
                 <th>Conversão</th>
                 <th>Gasto total</th>
                 <th>CPL</th>
@@ -142,7 +143,7 @@ export default function Daily() {
                     {r.tag ? <TagChip tag={r.tag} /> : <span className="text-tertiary" style={{ fontSize: 12 }}>sem tag</span>}
                   </td>
                   <td>{r.leads}</td>
-                  <td>{r.visits}</td>
+                  <td>{r.reach}</td>
                   <td>{r.conversion_rate.toFixed(1)}%</td>
                   <td>R$ {r.total_spent.toFixed(2)}</td>
                   <td>R$ {r.cpl.toFixed(2)}</td>
@@ -164,6 +165,7 @@ export default function Daily() {
             <div className="drawer-section">
               <div className="label">Período</div>
               <DateRangePicker value={range} onChange={setRange} />
+              <FilterPresets onApply={setRange} />
             </div>
             <div className="drawer-section">
               <div className="label">Tag</div>
@@ -175,3 +177,5 @@ export default function Daily() {
     </div>
   );
 }
+
+
