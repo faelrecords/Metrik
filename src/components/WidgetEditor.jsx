@@ -34,9 +34,22 @@ const TYPES = [
   { v: 'bar', label: 'Barras' },
   { v: 'area', label: 'Área' },
   { v: 'pie', label: 'Pizza' },
+  { v: 'donut', label: 'Donut (pizza c/ total)' },
+  { v: 'combo', label: 'Linha + Barras (combo)' },
+  { v: 'progress', label: 'Barra de progresso' },
+  { v: 'gauge', label: 'Gauge / Velocímetro' },
+  { v: 'funnel', label: 'Funil de conversão' },
+  { v: 'ranking', label: 'Ranking (top N)' },
+  { v: 'sparkline', label: 'Sparkline (tendência)' },
+  { v: 'scoreboard', label: 'Scoreboard (multi-KPI)' },
+  { v: 'table', label: 'Tabela detalhada' },
+  { v: 'heatmap', label: 'Heatmap de calendário' },
   { v: 'formula', label: 'Fórmula (2 métricas)' },
   { v: 'compare', label: 'Comparação de período' }
 ];
+
+const RANK_LIMITS = [3, 5, 10, 20];
+const TABLE_LIMITS = [5, 10, 20, 50];
 
 const OPERATIONS = [
   { v: '/', label: 'Divisão (M1 ÷ M2)' },
@@ -196,6 +209,63 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
             </select>
           </div>
         )}
+
+        {(w.chart_type === 'progress' || w.chart_type === 'gauge') && (
+          <div className="field">
+            <label className="label">Meta (valor alvo)</label>
+            <input className="input" type="number" step="any" placeholder="Ex: 500"
+              value={w.goal_value ?? ''} onChange={e => set('goal_value', e.target.value === '' ? '' : Number(e.target.value))} />
+          </div>
+        )}
+
+        {w.chart_type === 'combo' && (
+          <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 12 }}>
+            <div className="label" style={{ marginBottom: 8, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Campo da linha (eixo direito)</div>
+            <div className="grid-2">
+              <div className="field" style={{ margin: 0 }}>
+                <label className="label">Campo</label>
+                <select className="select" value={w.field2 || 'cpl'} onChange={e => set('field2', e.target.value)}>
+                  {FIELDS[w.source].map(f => <option key={f.v} value={f.v}>{f.label}</option>)}
+                </select>
+              </div>
+              <div className="field" style={{ margin: 0 }}>
+                <label className="label">Cor da linha</label>
+                <div className="color-picker">
+                  {COLORS.map(c => (
+                    <div key={c} className={`color-dot ${(w.color2 || '#30d173') === c ? 'selected' : ''}`} style={{ background: c }} onClick={() => set('color2', c)} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {w.chart_type === 'ranking' && (
+          <div className="field">
+            <label className="label">Quantidade de itens</label>
+            <select className="select" value={w.rank_limit || 5} onChange={e => set('rank_limit', Number(e.target.value))}>
+              {RANK_LIMITS.map(n => <option key={n} value={n}>Top {n}</option>)}
+            </select>
+          </div>
+        )}
+
+        {w.chart_type === 'table' && (
+          <div className="field">
+            <label className="label">Linhas exibidas</label>
+            <select className="select" value={w.table_limit || 10} onChange={e => set('table_limit', Number(e.target.value))}>
+              {TABLE_LIMITS.map(n => <option key={n} value={n}>{n} linhas</option>)}
+            </select>
+          </div>
+        )}
+
+        {['funnel', 'scoreboard', 'heatmap'].includes(w.chart_type) && (
+          <div className="hint" style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
+            {w.chart_type === 'funnel' && 'Campos usados automaticamente: Visitas e Leads da fonte selecionada.'}
+            {w.chart_type === 'scoreboard' && 'Exibe todas as métricas principais da fonte selecionada em um único card.'}
+            {w.chart_type === 'heatmap' && 'Grade de dias colorida por intensidade do campo selecionado. Funciona melhor com tamanho 12.'}
+          </div>
+        )}
+
         <div className="grid-2">
           <div className="field">
             <label className="label">Tamanho (colunas / 12)</label>
