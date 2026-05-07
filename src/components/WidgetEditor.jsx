@@ -44,6 +44,7 @@ const TYPES = [
   { v: 'scoreboard', label: 'Scoreboard (multi-KPI)' },
   { v: 'table', label: 'Tabela detalhada' },
   { v: 'heatmap', label: 'Heatmap de calendário' },
+  { v: 'month_compare', label: 'Comparação mês a mês' },
   { v: 'formula', label: 'Fórmula (2 métricas)' },
   { v: 'compare', label: 'Comparação de período' }
 ];
@@ -91,6 +92,8 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
   function set(k, v) {
     const next = { ...w, [k]: v };
     if (k === 'source') {
+      if (w.chart_type === 'month_compare' && v === 'daily') v = 'leads';
+      next.source = v;
       next.field = FIELDS[v][0].v;
       next.landing_id = '';
       next.campaign_filter = '';
@@ -104,6 +107,14 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
     }
     if (k === 'chart_type' && v === 'compare') {
       next.compare_mode = next.compare_mode || 'prev_period';
+    }
+    if (k === 'chart_type' && v === 'month_compare') {
+      const month = new Date().toISOString().slice(0, 7);
+      if (next.source === 'daily') next.source = 'leads';
+      next.field = FIELDS[next.source][0].v;
+      next.month_from = next.month_from || month;
+      next.month_to = next.month_to || month;
+      next.size = 12;
     }
     setW(next);
   }
@@ -125,7 +136,7 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
           <div className="field">
             <label className="label">Fonte de dados</label>
             <select className="select" value={w.source} onChange={e => set('source', e.target.value)}>
-              {SOURCES.map(s => <option key={s.v} value={s.v}>{s.label}</option>)}
+              {SOURCES.filter(s => w.chart_type !== 'month_compare' || s.v !== 'daily').map(s => <option key={s.v} value={s.v}>{s.label}</option>)}
             </select>
           </div>
           <div className="field">
@@ -167,6 +178,25 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
             </select>
           </div>
         </div>
+
+        {w.chart_type === 'month_compare' && (
+          <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 12, marginBottom: 4 }}>
+            <div className="label" style={{ marginBottom: 8, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Meses comparados</div>
+            <div className="grid-2">
+              <div className="field" style={{ margin: 0 }}>
+                <label className="label">Mês inicial</label>
+                <input className="input" type="month" value={w.month_from || ''} onChange={e => set('month_from', e.target.value)} />
+              </div>
+              <div className="field" style={{ margin: 0 }}>
+                <label className="label">Mês final</label>
+                <input className="input" type="month" value={w.month_to || ''} onChange={e => set('month_to', e.target.value)} />
+              </div>
+            </div>
+            <div className="hint" style={{ marginTop: 8, fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
+              Use Volume de leads ou Landing pages. Landing pages permite comparar uma página específica.
+            </div>
+          </div>
+        )}
 
         {w.chart_type === 'formula' && (
           <>
@@ -308,7 +338,7 @@ export default function WidgetEditor({ initial, onSave, onClose, landingPages = 
           )}
         </div>
 
-        {!['pie', 'donut', 'scoreboard', 'table', 'heatmap'].includes(w.chart_type) && (
+        {!['pie', 'donut', 'scoreboard', 'table', 'heatmap', 'month_compare'].includes(w.chart_type) && (
           <div className="field">
             <label className="label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Cor dinâmica por meta</span>

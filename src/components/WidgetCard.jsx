@@ -113,6 +113,72 @@ const FIELD_LABELS = {
   conversion_rate: 'Conversão', totalVisits: 'Alcance', totalLeads: 'Leads', conversion: 'Conversão'
 };
 
+function monthKey(date) {
+  return String(date || '').slice(0, 7);
+}
+
+function monthLabel(key) {
+  const [year, month] = String(key || '').split('-');
+  return month && year ? `${month}/${year}` : key;
+}
+
+function monthRange(from, to) {
+  const fallback = new Date().toISOString().slice(0, 7);
+  const start = from || fallback;
+  const end = to || start;
+  const [sy, sm] = start.split('-').map(Number);
+  const [ey, em] = end.split('-').map(Number);
+  if (!sy || !sm || !ey || !em) return [fallback];
+  const rows = [];
+  let y = sy, m = sm;
+  while (y < ey || (y === ey && m <= em)) {
+    rows.push(`${y}-${String(m).padStart(2, '0')}`);
+    m += 1;
+    if (m > 12) { m = 1; y += 1; }
+  }
+  return rows.length ? rows : [start];
+}
+
+function computeMonthCompare(widget, dataLeads, dataLanding) {
+  const months = monthRange(widget.month_from, widget.month_to);
+  const isLanding = widget.source === 'landing';
+  const rows = months.map(month => isLanding
+    ? { month, totalVisits: 0, totalLeads: 0, conversion: 0 }
+    : { month, leads: 0, visits: 0, conversion_rate: 0, total_spent: 0, cpl: 0 }
+  );
+  const byMonth = Object.fromEntries(rows.map(r => [r.month, r]));
+
+  if (isLanding) {
+    const pages = widget.landing_id ? dataLanding.filter(p => Number(p.id) === Number(widget.landing_id)) : dataLanding;
+    for (const page of pages) {
+      for (const entry of page.entries || []) {
+        const row = byMonth[monthKey(entry.period_start)];
+        if (!row) continue;
+        row.totalVisits += Number(entry.visits) || 0;
+        row.totalLeads += Number(entry.leads) || 0;
+      }
+    }
+    rows.forEach(r => { r.conversion = r.totalVisits > 0 ? (r.totalLeads / r.totalVisits) * 100 : 0; });
+    return rows;
+  }
+
+  for (const record of dataLeads) {
+    const row = byMonth[monthKey(record.period_start)];
+    if (!row) continue;
+    for (const campaign of record.campaigns || []) {
+      if (widget.campaign_filter && campaign.name !== widget.campaign_filter) continue;
+      row.leads += Number(campaign.leads) || 0;
+      row.visits += Number(campaign.visits) || 0;
+      row.total_spent += Number(campaign.total_spent) || ((Number(campaign.leads) || 0) * (Number(campaign.cpl) || 0));
+    }
+  }
+  rows.forEach(r => {
+    r.conversion_rate = r.visits > 0 ? (r.leads / r.visits) * 100 : 0;
+    r.cpl = r.leads > 0 ? r.total_spent / r.leads : 0;
+  });
+  return rows;
+}
+
 function EyeIcon({ hidden }) {
   return hidden ? (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -192,6 +258,56 @@ export default function WidgetCard({ widget, dataLeads, dataLanding, dateRange, 
       {onDelete && <button onClick={onDelete}>×</button>}
     </div>
   );
+
+  // Comparação mês a mês
+  if (widget.chart_type === 'month_compare') {
+    const rows = computeMonthCompare(widget, dataLeads, dataLanding);
+    const isLanding = widget.source === 'landing';
+    const cols = isLanding
+      ? [
+        ['month', 'Mês'],
+        ['totalVisits', 'Alcance'],
+        ['totalLeads', 'Leads'],
+        ['conversion', 'Conversão']
+      ]
+      : [
+        ['month', 'Mês'],
+        ['leads', 'Leads'],
+        ['visits', 'Alcance'],
+        ['conversion_rate', 'Conversão'],
+        ['total_spent', 'Gasto'],
+        ['cpl', 'CPL']
+      ];
+    return (
+      <div className={`widget size-${widget.size || 12}`}>
+        <div className="widget-head">
+          <div className="widget-title">
+            {widget.title}
+            {widget.campaign_filter && <span className="text-tertiary" style={{ fontSize: 11, marginLeft: 6 }}>· {widget.campaign_filter}</span>}
+          </div>
+          {actions}
+        </div>
+        <div style={{ overflowX: 'auto', padding: '0 4px 8px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr>{cols.map(([, label]) => <th key={label} style={{ padding: '8px 10px', textAlign: 'left', color: '#acadb1', fontSize: 10, textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.08)', whiteSpace: 'nowrap' }}>{label}</th>)}</tr>
+            </thead>
+            <tbody>
+              {rows.map(row => (
+                <tr key={row.month} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  {cols.map(([field], index) => (
+                    <td key={field} style={{ padding: '8px 10px', color: index === 0 ? '#e8e7ec' : '#acadb1', whiteSpace: 'nowrap' }}>
+                      {index === 0 ? monthLabel(row.month) : dataHidden ? '••••' : fmt(row[field], field)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
 
   // Formula widget: combina duas métricas com uma operação
   if (widget.chart_type === 'formula') {
